@@ -1,0 +1,4 @@
+#!/bin/sh
+
+cd front/V3 || exit 1
+pnpm lint-staged
