@@ -1,0 +1,41 @@
+[
+  {
+    "id": "admin",
+    "name": "系统管理员",
+    "permissions": [
+      "dashboard:view",
+      "system:user:view",
+      "system:role:view",
+      "system:menu:view",
+      "system:menu:create",
+      "system:menu:edit",
+      "system:menu:delete",
+      "demo:crud:view"
+    ],
+    "menuIds": [
+      "dashboard",
+      "system-root",
+      "system-user",
+      "system-role",
+      "system-menu",
+      "system-menu-create",
+      "system-menu-edit",
+      "system-menu-delete",
+      "demo-root",
+      "demo-crud"
+    ]
+  },
+  {
+    "id": "editor",
+    "name": "运营编辑",
+    "permissions": [
+      "dashboard:view",
+      "demo:crud:view"
+    ],
+    "menuIds": [
+      "dashboard",
+      "demo-root",
+      "demo-crud"
+    ]
+  }
+]

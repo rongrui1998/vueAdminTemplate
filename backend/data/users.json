@@ -1,0 +1,20 @@
+[
+  {
+    "id": "u-1",
+    "username": "admin",
+    "password": "123456",
+    "nickname": "系统管理员",
+    "avatar": "",
+    "roleIds": ["admin"],
+    "token": "backend-token-admin"
+  },
+  {
+    "id": "u-2",
+    "username": "editor",
+    "password": "123456",
+    "nickname": "运营编辑",
+    "avatar": "",
+    "roleIds": ["editor"],
+    "token": "backend-token-editor"
+  }
+]

@@ -1,0 +1,9 @@
+html.dark {
+  --app-bg-color: #141414;
+  --app-card-bg-color: #1d1e1f;
+  --app-card-shadow: none;
+}
+
+html.dark body {
+  background: var(--app-bg-color);
+}

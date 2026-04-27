@@ -1,0 +1,34 @@
+import type { DashboardStatistics } from '@/types/dashboard';
+
+export const dashboardStatistics: DashboardStatistics = {
+  cards: [
+    {
+      key: 'sales',
+      title: '今日销售额',
+      value: 28640,
+      unit: '元',
+      description: '较昨日增长 12.6%',
+    },
+    {
+      key: 'orders',
+      title: '今日订单数',
+      value: 138,
+      unit: '单',
+      description: '待处理订单 16 单',
+    },
+    {
+      key: 'users',
+      title: '新增用户',
+      value: 52,
+      unit: '人',
+      description: '核心渠道转化率 18%',
+    },
+    {
+      key: 'conversion',
+      title: '支付转化率',
+      value: 68,
+      unit: '%',
+      description: '支付链路稳定运行',
+    },
+  ],
+};
