@@ -23,14 +23,29 @@ function filterMenusByPermissions(
       ? filterMenusByPermissions(item.children, permissions, isAdmin)
       : [];
     const hasPermission = !item.permission || isAdmin || permissions.includes(item.permission);
-    const canDisplayDirectory = item.type === 'directory' && children.length > 0;
+    const isDirectory = item.type === 'directory';
+    const visibleChildren = children.filter((child) => !child.hidden && child.type !== 'button');
 
-    if (!hasPermission && !canDisplayDirectory) {
+    if (item.type === 'button' && !hasPermission) {
+      return result;
+    }
+
+    if (isDirectory) {
+      if (!children.length) {
+        return result;
+      }
+
+      result.push({
+        ...item,
+        hidden: item.hidden || visibleChildren.length === 0,
+        children,
+      });
       return result;
     }
 
     result.push({
       ...item,
+      hidden: item.hidden || !hasPermission,
       children,
     });
     return result;

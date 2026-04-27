@@ -48,7 +48,7 @@ export const menuData: BackendMenuItem[] = [
         children: [],
       },
       {
-        id: 'demo-nested-root',
+        id: 'demo-permission',
         parentId: 'demo-root',
         name: '权限示例',
         path: 'permission',

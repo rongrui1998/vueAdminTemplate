@@ -6,6 +6,12 @@
 - `VITE_USE_MOCK`：是否启用 vite mock
 - `VITE_MENU_SOURCE`：菜单来源切换
 
+推荐先从 `.env.example` 复制环境模板：
+
+```bash
+cp .env.example .env.local
+```
+
 ## 当前模式
 
 ### 1. mock 模式
@@ -24,6 +30,7 @@
 
 - `VITE_MENU_SOURCE=api`
 - 菜单走真实后端接口
+- 建议同时设置 `VITE_USE_MOCK=false`
 
 ## mock 文件位置
 
@@ -54,3 +61,8 @@
 - 401 处理
 - 业务 code 判断
 - 错误提示
+
+## 推荐联读
+
+- `07-base-overview-and-usage.md`
+- `08-backend-integration-contract.md`

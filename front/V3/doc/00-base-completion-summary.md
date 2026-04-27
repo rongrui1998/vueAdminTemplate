@@ -16,6 +16,13 @@
 - **文档交付：已完成**
 - **剩余项：仅优化项**
 
+建议阅读入口：
+
+- 如果你是第一次接手 Base，请先看 `07-base-overview-and-usage.md`
+- 如果你准备接真实后端，再看 `08-backend-integration-contract.md`
+- 如果你想看这版是否已经可交付，请看 `09-base-release-notes.md`
+- 再按需阅读 `01 ~ 06` 的分章节说明
+
 ---
 
 ## 二、Base 已完成范围
