@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import { FullScreen, Plus, RefreshRight } from '@element-plus/icons-vue';
+import { ArrowDown, ArrowRight, FullScreen, Plus, RefreshRight } from '@element-plus/icons-vue';
+import { usePermission } from '@/composables/usePermission';
 import {
   createSystemMenuApi,
   deleteSystemMenuApi,
@@ -20,8 +21,15 @@ interface ParentOption {
   label: string;
 }
 
+type MenuTableRow = Omit<SystemMenuRecord, 'children'> & {
+  __expanded: boolean;
+  __hasChildren: boolean;
+  __level: number;
+};
+
 const dataSourceLabel = computed(() => getStandardDataSourceLabel());
 const sourceStatus = computed(() => (isStandardApiMode() ? '接口联调中' : 'Mock 先行中'));
+const { hasPermission } = usePermission();
 const pageStatus = ref<'loading' | 'error' | 'success'>('loading');
 const errorText = ref('');
 const tableData = ref<SystemMenuRecord[]>([]);
@@ -30,8 +38,8 @@ const dialogMode = ref<SystemMenuFormMode>('create-root');
 const currentRecord = ref<SystemMenuRecord | null>(null);
 const parentRecord = ref<SystemMenuRecord | null>(null);
 const submitLoading = ref(false);
-const expandAll = ref(true);
-const tableRenderKey = ref(0);
+const expandAll = ref(false);
+const expandedRowIds = ref<Set<string>>(new Set());
 
 const parentOptions = computed<ParentOption[]>(() => {
   const result: ParentOption[] = [];
@@ -53,6 +61,52 @@ const parentOptions = computed<ParentOption[]>(() => {
   return result;
 });
 
+const visibleRows = computed<MenuTableRow[]>(() => {
+  const result: MenuTableRow[] = [];
+
+  function walk(list: SystemMenuRecord[], level = 0) {
+    list.forEach((item) => {
+      const { children, ...row } = item;
+      const hasChildren = Boolean(item.children?.length);
+      const expanded = expandedRowIds.value.has(item.id);
+
+      result.push({
+        ...row,
+        __expanded: expanded,
+        __hasChildren: hasChildren,
+        __level: level,
+      });
+
+      if (hasChildren && expanded) {
+        walk(children || [], level + 1);
+      }
+    });
+  }
+
+  walk(tableData.value);
+  return result;
+});
+
+function collectExpandableIds(list: SystemMenuRecord[]) {
+  const ids: string[] = [];
+
+  function walk(items: SystemMenuRecord[]) {
+    items.forEach((item) => {
+      if (item.children?.length) {
+        ids.push(item.id);
+        walk(item.children);
+      }
+    });
+  }
+
+  walk(list);
+  return ids;
+}
+
+function syncExpandedRows(list: SystemMenuRecord[]) {
+  expandedRowIds.value = expandAll.value ? new Set(collectExpandableIds(list)) : new Set();
+}
+
 function normalizePath(path = '') {
   if (!path) {
     return '-';
@@ -68,6 +122,7 @@ async function loadMenus() {
   try {
     const result = await getSystemMenusApi();
     tableData.value = result.list;
+    syncExpandedRows(result.list);
     pageStatus.value = 'success';
   } catch (error) {
     tableData.value = [];
@@ -130,7 +185,23 @@ async function handleSubmit(payload: SystemMenuPayload) {
 
 function toggleExpandAll() {
   expandAll.value = !expandAll.value;
-  tableRenderKey.value += 1;
+  syncExpandedRows(tableData.value);
+}
+
+function toggleRowExpand(row: MenuTableRow) {
+  if (!row.__hasChildren) {
+    return;
+  }
+
+  const nextIds = new Set(expandedRowIds.value);
+
+  if (row.__expanded) {
+    nextIds.delete(row.id);
+  } else {
+    nextIds.add(row.id);
+  }
+
+  expandedRowIds.value = nextIds;
 }
 
 function getRowTypeLabel(row: SystemMenuRecord) {
@@ -139,6 +210,27 @@ function getRowTypeLabel(row: SystemMenuRecord) {
 
 function getRowTypeTag(row: SystemMenuRecord) {
   return menuTypeTagTypeMap[row.type];
+}
+
+async function handleStatusChange(row: SystemMenuRecord, value: number | string | boolean) {
+  await updateSystemMenuApi(row.id, {
+    parentId: row.parentId ?? null,
+    type: row.type,
+    name: row.name,
+    path: row.path,
+    component: row.component,
+    permission: row.permission || '',
+    icon: row.icon || 'Menu',
+    sort: row.sort || 1,
+    status: Number(value),
+    hidden: Boolean(row.hidden),
+    keepAlive: Boolean(row.keepAlive),
+    affix: Boolean(row.affix),
+    remark: row.remark || '',
+  });
+
+  ElMessage.success(`已${Number(value) === 1 ? '启用' : '停用'}菜单`);
+  await loadMenus();
 }
 
 onMounted(() => {
@@ -150,59 +242,95 @@ onMounted(() => {
   <PageContainer title="菜单管理">
     <template #extra>
       <div class="menu-page__toolbar">
-        <el-button type="primary" :icon="Plus" @click="openCreateRootDialog">新增菜单</el-button>
+        <el-button
+          type="primary"
+          :icon="Plus"
+          :disabled="!hasPermission('system:menu:create')"
+          @click="openCreateRootDialog"
+        >
+          新增菜单
+        </el-button>
         <el-button circle :icon="RefreshRight" @click="loadMenus" />
         <el-button circle :icon="FullScreen" @click="toggleExpandAll" />
       </div>
     </template>
 
-    <section class="menu-page">
-      <div class="menu-page__meta">
-        <div class="menu-page__meta-item">
-          <span class="menu-page__meta-label">当前数据源</span>
-          <span class="menu-page__meta-value">{{ dataSourceLabel }}</span>
+    <el-alert type="info" :closable="false" class="menu-page__alert">
+      <template #title>
+        当前数据源：{{ dataSourceLabel }}，{{ sourceStatus }}。菜单管理已支持 mock / api
+        双模式的新增、编辑、删除与树形展示。
+      </template>
+    </el-alert>
+
+    <el-card shadow="never">
+      <template v-if="pageStatus === 'error'">
+        <div class="menu-page__state">
+          <el-result icon="error" title="菜单加载失败" :sub-title="errorText || '请稍后重试'">
+            <template #extra>
+              <el-button type="primary" @click="loadMenus">重新加载</el-button>
+            </template>
+          </el-result>
         </div>
-        <el-tag type="warning" effect="plain">{{ sourceStatus }}</el-tag>
-      </div>
+      </template>
 
-      <div v-if="pageStatus === 'error'" class="menu-page__state">
-        <el-result icon="error" title="菜单加载失败" :sub-title="errorText || '请稍后重试'">
-          <template #extra>
-            <el-button type="primary" @click="loadMenus">重新加载</el-button>
-          </template>
-        </el-result>
-      </div>
+      <template v-else-if="pageStatus === 'success' && !tableData.length">
+        <div class="menu-page__state">
+          <el-empty description="暂无菜单数据">
+            <template #default>
+              <div class="menu-page__empty-actions">
+                <el-button type="primary" @click="openCreateRootDialog">新增菜单</el-button>
+                <el-button @click="loadMenus">刷新数据</el-button>
+              </div>
+            </template>
+          </el-empty>
+        </div>
+      </template>
 
-      <div v-else class="menu-page__table-shell">
+      <template v-else>
         <el-table
-          v-if="pageStatus === 'success'"
-          :key="tableRenderKey"
-          :data="tableData"
+          v-loading="pageStatus === 'loading'"
+          :data="visibleRows"
           row-key="id"
           class="menu-page__table"
-          :default-expand-all="expandAll"
-          :tree-props="{ children: 'children' }"
         >
-          <el-table-column label="标题" min-width="300">
+          <el-table-column label="菜单名称" min-width="280">
             <template #default="{ row }">
               <div class="menu-page__name-cell">
+                <span
+                  v-if="row.__level > 0"
+                  class="menu-page__name-indent"
+                  :style="{ width: `${row.__level * 32}px` }"
+                />
+                <button
+                  v-if="row.__hasChildren"
+                  type="button"
+                  class="menu-page__expand-trigger"
+                  :aria-label="row.__expanded ? '收起菜单' : '展开菜单'"
+                  @click.stop="toggleRowExpand(row)"
+                >
+                  <el-icon :size="14">
+                    <ArrowDown v-if="row.__expanded" />
+                    <ArrowRight v-else />
+                  </el-icon>
+                </button>
+                <span v-else class="menu-page__expand-placeholder" />
                 <AppIcon :name="row.icon || 'Menu'" :size="18" />
                 <span class="menu-page__name-text">{{ row.name }}</span>
-                <span
-                  v-if="row.type === 'directory' && row.id === 'system-root'"
-                  class="menu-page__badge"
-                >
-                  new
-                </span>
               </div>
             </template>
           </el-table-column>
 
-          <el-table-column label="类型" width="120">
+          <el-table-column label="类型" width="110">
             <template #default="{ row }">
-              <el-tag :type="getRowTypeTag(row)" effect="dark">
+              <el-tag :type="getRowTypeTag(row)" effect="light">
                 {{ getRowTypeLabel(row) }}
               </el-tag>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="排序" width="100" align="center">
+            <template #default="{ row }">
+              <span class="menu-page__sort-value">{{ row.sort ?? 0 }}</span>
             </template>
           </el-table-column>
 
@@ -224,27 +352,51 @@ onMounted(() => {
             </template>
           </el-table-column>
 
+          <el-table-column label="状态" width="120" align="center">
+            <template #default="{ row }">
+              <el-switch
+                :model-value="row.status ?? 1"
+                :active-value="1"
+                :inactive-value="0"
+                :disabled="!hasPermission('system:menu:edit')"
+                @change="(value: string | number | boolean) => handleStatusChange(row, value)"
+              />
+            </template>
+          </el-table-column>
+
           <el-table-column label="操作" width="240" fixed="right">
             <template #default="{ row }">
               <div class="menu-page__actions">
                 <el-button
                   text
                   type="primary"
-                  :disabled="row.type === 'button'"
+                  :disabled="row.type === 'button' || !hasPermission('system:menu:create')"
                   @click="openCreateChildDialog(row)"
                 >
                   新增下级
                 </el-button>
-                <el-button text type="primary" @click="openEditDialog(row)">修改</el-button>
-                <el-button text type="danger" @click="handleDelete(row)">删除</el-button>
+                <el-button
+                  text
+                  type="primary"
+                  :disabled="!hasPermission('system:menu:edit')"
+                  @click="openEditDialog(row)"
+                >
+                  修改
+                </el-button>
+                <el-button
+                  text
+                  type="danger"
+                  :disabled="!hasPermission('system:menu:delete')"
+                  @click="handleDelete(row)"
+                >
+                  删除
+                </el-button>
               </div>
             </template>
           </el-table-column>
         </el-table>
-
-        <el-skeleton v-else animated :rows="6" />
-      </div>
-    </section>
+      </template>
+    </el-card>
 
     <MenuFormDialog
       :visible="dialogVisible"
@@ -260,77 +412,79 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.menu-page {
-  padding: 18px;
-  border: 1px solid rgb(255 255 255 / 0.08);
-  border-radius: 20px;
-  background:
-    radial-gradient(circle at top right, rgb(64 158 255 / 0.1), transparent 18%),
-    linear-gradient(180deg, rgb(8 17 37 / 0.96), rgb(5 12 28 / 0.98));
-}
-
 .menu-page__toolbar {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.menu-page__meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 18px;
+.menu-page__alert {
+  margin-bottom: 16px;
 }
 
-.menu-page__meta-item {
+.menu-page__state {
+  padding: 24px 0;
+}
+
+.menu-page__empty-actions {
   display: flex;
-  align-items: center;
+  justify-content: center;
   gap: 12px;
-}
-
-.menu-page__meta-label {
-  color: rgb(166 176 198 / 0.76);
-  font-size: 13px;
-}
-
-.menu-page__meta-value {
-  color: #fff;
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.menu-page__state,
-.menu-page__table-shell {
-  border: 1px solid rgb(255 255 255 / 0.08);
-  border-radius: 18px;
-  overflow: hidden;
-  background: rgb(6 14 31 / 0.9);
 }
 
 .menu-page__name-cell {
   display: flex;
   align-items: center;
-  gap: 10px;
+  min-width: 0;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.menu-page__name-indent {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.menu-page__expand-trigger,
+.menu-page__expand-placeholder {
+  display: inline-flex;
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+}
+
+.menu-page__expand-trigger {
+  padding: 0;
+  color: var(--el-text-color-secondary);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  transition: color 0.2s ease;
+}
+
+.menu-page__expand-trigger:hover {
+  color: var(--el-color-primary);
 }
 
 .menu-page__name-text {
-  color: #f5f7fa;
+  overflow: hidden;
   font-size: 15px;
   font-weight: 700;
-}
-
-.menu-page__badge {
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: rgb(64 158 255 / 0.16);
-  color: rgb(92 177 255);
-  font-size: 12px;
-  font-weight: 700;
+  text-overflow: ellipsis;
 }
 
 .menu-page__muted {
-  color: rgb(210 220 237 / 0.82);
+  color: var(--el-text-color-secondary);
+}
+
+.menu-page__sort-value {
+  display: inline-flex;
+  min-width: 32px;
+  justify-content: center;
+  color: var(--el-text-color-regular);
+  font-weight: 600;
 }
 
 .menu-page__actions {
@@ -340,36 +494,21 @@ onMounted(() => {
 }
 
 :deep(.menu-page__table.el-table) {
-  --el-table-bg-color: transparent;
-  --el-table-tr-bg-color: transparent;
-  --el-table-row-hover-bg-color: rgb(38 58 95 / 0.24);
-  --el-table-header-bg-color: rgb(32 44 69 / 0.98);
-  --el-table-border-color: rgb(255 255 255 / 0.08);
-  --el-table-text-color: rgb(243 247 255 / 0.94);
-  --el-table-header-text-color: rgb(193 203 220 / 0.88);
+  --el-table-fixed-right-column: var(--el-bg-color);
   --el-table-fixed-box-shadow: none;
 }
 
 :deep(.menu-page__table .el-table__header-wrapper th) {
-  height: 54px;
+  height: 56px;
   font-size: 14px;
   font-weight: 700;
 }
 
 :deep(.menu-page__table .el-table__row td) {
-  padding: 18px 0;
-}
-
-:deep(.menu-page__table .el-table__cell) {
-  background: transparent;
+  padding: 16px 0;
 }
 
 @media (max-width: 900px) {
-  .menu-page__meta {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .menu-page__toolbar {
     flex-wrap: wrap;
     justify-content: flex-end;

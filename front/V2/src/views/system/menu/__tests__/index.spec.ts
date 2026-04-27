@@ -1,5 +1,7 @@
 import { mount } from '@vue/test-utils';
 import ElementPlus from 'element-plus';
+import { createPinia, setActivePinia } from 'pinia';
+import { useAuthStore } from '@/store/modules/auth';
 import MenuManagementPage from '@/views/system/menu/index.vue';
 
 const apiMocks = vi.hoisted(() => ({
@@ -75,10 +77,29 @@ const dialogStub = {
 
 describe('system menu page', () => {
   it('renders a real management toolbar and tree table', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+
+    const authStore = useAuthStore();
+    authStore.userInfoLoaded = true;
+    authStore.userInfo = {
+      id: 'u-1',
+      username: 'admin',
+      nickname: '系统管理员',
+      avatar: '',
+      roles: ['admin'],
+      permissions: [
+        'system:menu:view',
+        'system:menu:create',
+        'system:menu:edit',
+        'system:menu:delete',
+      ],
+    };
+
     const wrapper = mount(MenuManagementPage, {
       attachTo: document.body,
       global: {
-        plugins: [ElementPlus],
+        plugins: [ElementPlus, pinia],
         stubs: {
           ElDialog: dialogStub,
           teleport: true,
@@ -91,25 +112,51 @@ describe('system menu page', () => {
     expect(apiMocks.getSystemMenusApi).toHaveBeenCalled();
     expect(wrapper.text()).toContain('菜单管理');
     expect(wrapper.text()).toContain('新增菜单');
-    expect(wrapper.text()).toContain('标题');
+    expect(wrapper.text()).toContain('菜单名称');
     expect(wrapper.text()).toContain('类型');
+    expect(wrapper.text()).toContain('排序');
     expect(wrapper.text()).toContain('权限标识');
     expect(wrapper.text()).toContain('路由地址');
     expect(wrapper.text()).toContain('页面组件');
+    expect(wrapper.text()).toContain('状态');
     expect(wrapper.text()).toContain('操作');
     expect(wrapper.text()).toContain('新增下级');
     expect(wrapper.text()).toContain('修改');
     expect(wrapper.text()).toContain('删除');
     expect(wrapper.text()).toContain('系统管理');
+    expect(wrapper.find('.menu-page__expand-trigger').exists()).toBe(true);
+    expect(wrapper.text()).not.toContain('system:menu:view');
+    await wrapper.find('.menu-page__expand-trigger').trigger('click');
+    await wrapper.vm.$nextTick();
     expect(wrapper.text()).toContain('菜单管理');
-    expect(wrapper.text()).toContain('新增');
+    expect(wrapper.find('.menu-page__name-indent').attributes('style')).toContain('width: 32px');
+    expect(wrapper.find('.el-table__expand-icon').exists()).toBe(false);
   });
 
   it('opens the create dialog from the toolbar', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+
+    const authStore = useAuthStore();
+    authStore.userInfoLoaded = true;
+    authStore.userInfo = {
+      id: 'u-1',
+      username: 'admin',
+      nickname: '系统管理员',
+      avatar: '',
+      roles: ['admin'],
+      permissions: [
+        'system:menu:view',
+        'system:menu:create',
+        'system:menu:edit',
+        'system:menu:delete',
+      ],
+    };
+
     const wrapper = mount(MenuManagementPage, {
       attachTo: document.body,
       global: {
-        plugins: [ElementPlus],
+        plugins: [ElementPlus, pinia],
         stubs: {
           ElDialog: dialogStub,
           teleport: true,
