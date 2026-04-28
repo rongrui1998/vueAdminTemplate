@@ -9,6 +9,7 @@ export {};
 declare module 'vue' {
   export interface GlobalComponents {
     AppIcon: typeof import('./components/AppIcon/index.vue')['default']
+    DrawerForm: typeof import('./components/DrawerForm/index.vue')['default']
     ElAlert: typeof import('element-plus/es')['ElAlert']
     ElAside: typeof import('element-plus/es')['ElAside']
     ElAvatar: typeof import('element-plus/es')['ElAvatar']
@@ -54,10 +55,13 @@ declare module 'vue' {
     ElTag: typeof import('element-plus/es')['ElTag']
     ElTooltip: typeof import('element-plus/es')['ElTooltip']
     ElTree: typeof import('element-plus/es')['ElTree']
+    ModalForm: typeof import('./components/ModalForm/index.vue')['default']
     NotificationPanel: typeof import('./components/NotificationPanel/index.vue')['default']
     PageContainer: typeof import('./components/PageContainer/index.vue')['default']
+    ProTable: typeof import('./components/ProTable/index.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SearchForm: typeof import('./components/SearchForm/index.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

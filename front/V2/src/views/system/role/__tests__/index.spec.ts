@@ -112,6 +112,7 @@ function mountPage() {
       'system:role:create',
       'system:role:edit',
       'system:role:delete',
+      'system:role:auth',
     ],
   };
 

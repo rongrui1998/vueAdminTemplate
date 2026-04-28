@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Plus, RefreshRight } from '@element-plus/icons-vue';
 import { getSystemRolesApi } from '@/api/system-role';
@@ -11,6 +11,8 @@ import {
   updateSystemUserApi,
 } from '@/api/system-user';
 import PageContainer from '@/components/PageContainer/index.vue';
+import ProTable from '@/components/ProTable/index.vue';
+import SearchForm, { type SearchFormField } from '@/components/SearchForm/index.vue';
 import { usePermission } from '@/composables/usePermission';
 import { getStandardDataSourceLabel, isStandardApiMode } from '@/constants/standard';
 import type { SystemRoleRecord } from '@/types/system-role';
@@ -27,13 +29,25 @@ const roleOptions = ref<SystemRoleRecord[]>([]);
 const formVisible = ref(false);
 const currentRecord = ref<SystemUserRecord | null>(null);
 const submitLoading = ref(false);
+const queryForm = reactive({
+  keyword: '',
+});
+const searchFields: SearchFormField[] = [
+  {
+    label: '关键词',
+    prop: 'keyword',
+    placeholder: '登录账号 / 用户昵称',
+  },
+];
 
 async function loadUsers() {
   pageStatus.value = 'loading';
   errorText.value = '';
 
   try {
-    const result = await getSystemUsersApi();
+    const result = await getSystemUsersApi({
+      keyword: queryForm.keyword,
+    });
     tableData.value = result.list;
     pageStatus.value = 'success';
   } catch (error) {
@@ -41,6 +55,15 @@ async function loadUsers() {
     pageStatus.value = 'error';
     errorText.value = error instanceof Error ? error.message : '加载用户数据失败';
   }
+}
+
+function handleSearch() {
+  loadUsers();
+}
+
+function handleReset() {
+  queryForm.keyword = '';
+  loadUsers();
 }
 
 async function ensureRoleOptionsLoaded() {
@@ -147,89 +170,91 @@ onMounted(() => {
       </template>
     </el-alert>
 
-    <el-card shadow="never">
-      <template v-if="pageStatus === 'error'">
-        <div class="user-page__state">
-          <el-result icon="error" title="用户加载失败" :sub-title="errorText || '请稍后重试'">
-            <template #extra>
-              <el-button type="primary" @click="loadUsers">重新加载</el-button>
-            </template>
-          </el-result>
-        </div>
-      </template>
+    <SearchForm
+      :model-value="queryForm"
+      :fields="searchFields"
+      @update:model-value="Object.assign(queryForm, $event)"
+      @search="handleSearch"
+      @reset="handleReset"
+    />
 
-      <template v-else>
-        <el-table v-loading="pageStatus === 'loading'" :data="tableData" row-key="id">
-          <el-table-column label="登录账号" prop="username" min-width="140" />
+    <ProTable
+      :data="tableData"
+      :loading="pageStatus === 'loading'"
+      :error="pageStatus === 'error'"
+      :error-text="errorText || '请稍后重试'"
+      error-title="用户加载失败"
+      row-key="id"
+      @retry="loadUsers"
+    >
+      <el-table-column label="登录账号" prop="username" min-width="140" />
 
-          <el-table-column label="用户昵称" min-width="150">
-            <template #default="{ row }">
-              <div class="user-page__name">
-                <span>{{ row.nickname }}</span>
-                <el-tag v-if="row.username === 'admin'" size="small" effect="plain">内置</el-tag>
-              </div>
-            </template>
-          </el-table-column>
+      <el-table-column label="用户昵称" min-width="150">
+        <template #default="{ row }">
+          <div class="user-page__name">
+            <span>{{ row.nickname }}</span>
+            <el-tag v-if="row.username === 'admin'" size="small" effect="plain">内置</el-tag>
+          </div>
+        </template>
+      </el-table-column>
 
-          <el-table-column label="绑定角色" min-width="200">
-            <template #default="{ row }">
-              <div class="user-page__roles">
-                <el-tag v-for="roleName in row.roleNames" :key="roleName" effect="light">
-                  {{ roleName }}
-                </el-tag>
-              </div>
-            </template>
-          </el-table-column>
+      <el-table-column label="绑定角色" min-width="200">
+        <template #default="{ row }">
+          <div class="user-page__roles">
+            <el-tag v-for="roleName in row.roleNames" :key="roleName" effect="light">
+              {{ roleName }}
+            </el-tag>
+          </div>
+        </template>
+      </el-table-column>
 
-          <el-table-column label="状态" width="120" align="center">
-            <template #default="{ row }">
-              <el-switch
-                :model-value="row.status"
-                :active-value="1"
-                :inactive-value="0"
-                :disabled="row.username === 'admin' || !hasPermission('system:user:edit')"
-                @change="(value: string | number | boolean) => handleStatusChange(row, value)"
-              />
-            </template>
-          </el-table-column>
+      <el-table-column label="状态" width="120" align="center">
+        <template #default="{ row }">
+          <el-switch
+            :model-value="row.status"
+            :active-value="1"
+            :inactive-value="0"
+            :disabled="row.username === 'admin' || !hasPermission('system:user:edit')"
+            @change="(value: string | number | boolean) => handleStatusChange(row, value)"
+          />
+        </template>
+      </el-table-column>
 
-          <el-table-column label="最后登录" prop="lastLoginAt" min-width="170" />
+      <el-table-column label="最后登录" prop="lastLoginAt" min-width="170" />
 
-          <el-table-column label="创建时间" prop="createdAt" min-width="170" />
+      <el-table-column label="创建时间" prop="createdAt" min-width="170" />
 
-          <el-table-column label="操作" width="300" fixed="right">
-            <template #default="{ row }">
-              <div class="user-page__actions">
-                <el-button
-                  text
-                  type="primary"
-                  :disabled="!hasPermission('system:user:reset')"
-                  @click="handleResetPassword(row)"
-                >
-                  重置密码
-                </el-button>
-                <el-button
-                  text
-                  type="primary"
-                  :disabled="!hasPermission('system:user:edit')"
-                  @click="openEditDialog(row)"
-                >
-                  修改
-                </el-button>
-                <el-button
-                  text
-                  type="danger"
-                  :disabled="row.username === 'admin' || !hasPermission('system:user:delete')"
-                  @click="handleDelete(row)"
-                >
-                  删除
-                </el-button>
-              </div>
-            </template>
-          </el-table-column>
-        </el-table>
-      </template>
-    </el-card>
+      <el-table-column label="操作" width="300" fixed="right">
+        <template #default="{ row }">
+          <div class="user-page__actions">
+            <el-button
+              text
+              type="primary"
+              :disabled="!hasPermission('system:user:reset')"
+              @click="handleResetPassword(row)"
+            >
+              重置密码
+            </el-button>
+            <el-button
+              text
+              type="primary"
+              :disabled="!hasPermission('system:user:edit')"
+              @click="openEditDialog(row)"
+            >
+              修改
+            </el-button>
+            <el-button
+              text
+              type="danger"
+              :disabled="row.username === 'admin' || !hasPermission('system:user:delete')"
+              @click="handleDelete(row)"
+            >
+              删除
+            </el-button>
+          </div>
+        </template>
+      </el-table-column>
+    </ProTable>
 
     <UserFormDialog
       :visible="formVisible"
@@ -251,10 +276,6 @@ onMounted(() => {
 
 .user-page__alert {
   margin-bottom: 16px;
-}
-
-.user-page__state {
-  padding: 24px 0;
 }
 
 .user-page__name,

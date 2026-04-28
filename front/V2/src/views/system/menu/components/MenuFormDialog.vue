@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
+import ModalForm from '@/components/ModalForm/index.vue';
 import type { SystemMenuFormMode, SystemMenuPayload, SystemMenuRecord } from '@/types/system-menu';
 import { defaultMenuPayload, menuTypeOptions } from '../constants';
 
@@ -183,10 +184,6 @@ watch(
   },
 );
 
-function closeDialog() {
-  emit('update:visible', false);
-}
-
 async function submitForm() {
   const isValid = await formRef.value?.validate().catch(() => false);
 
@@ -214,12 +211,14 @@ async function submitForm() {
 </script>
 
 <template>
-  <el-dialog
-    :model-value="visible"
+  <ModalForm
+    :visible="visible"
     :title="dialogTitle"
     width="720px"
-    destroy-on-close
-    @close="closeDialog"
+    :submitting="submitting"
+    confirm-text="保存菜单"
+    @confirm="submitForm"
+    @update:visible="emit('update:visible', $event)"
   >
     <el-form ref="formRef" :model="formModel" :rules="rules" label-width="96px">
       <el-row :gutter="16">
@@ -331,24 +330,11 @@ async function submitForm() {
         </el-col>
       </el-row>
     </el-form>
-
-    <template #footer>
-      <div class="menu-form-dialog__footer">
-        <el-button @click="closeDialog">取消</el-button>
-        <el-button type="primary" :loading="submitting" @click="submitForm">保存菜单</el-button>
-      </div>
-    </template>
-  </el-dialog>
+  </ModalForm>
 </template>
 
 <style scoped>
 .w-full {
   width: 100%;
-}
-
-.menu-form-dialog__footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
 }
 </style>

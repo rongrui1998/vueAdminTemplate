@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Plus, RefreshRight } from '@element-plus/icons-vue';
 import { getSystemMenusApi } from '@/api/system-menu';
@@ -11,6 +11,8 @@ import {
   updateSystemRoleMenusApi,
 } from '@/api/system-role';
 import PageContainer from '@/components/PageContainer/index.vue';
+import ProTable from '@/components/ProTable/index.vue';
+import SearchForm, { type SearchFormField } from '@/components/SearchForm/index.vue';
 import { usePermission } from '@/composables/usePermission';
 import { getStandardDataSourceLabel, isStandardApiMode } from '@/constants/standard';
 import type { BackendMenuItem } from '@/types/menu';
@@ -30,13 +32,25 @@ const permissionVisible = ref(false);
 const currentRecord = ref<SystemRoleRecord | null>(null);
 const submitLoading = ref(false);
 const permissionLoading = ref(false);
+const queryForm = reactive({
+  keyword: '',
+});
+const searchFields: SearchFormField[] = [
+  {
+    label: '关键词',
+    prop: 'keyword',
+    placeholder: '角色名称 / 角色编码',
+  },
+];
 
 async function loadRoles() {
   pageStatus.value = 'loading';
   errorText.value = '';
 
   try {
-    const result = await getSystemRolesApi();
+    const result = await getSystemRolesApi({
+      keyword: queryForm.keyword,
+    });
     tableData.value = result.list;
     pageStatus.value = 'success';
   } catch (error) {
@@ -44,6 +58,15 @@ async function loadRoles() {
     pageStatus.value = 'error';
     errorText.value = error instanceof Error ? error.message : '加载角色数据失败';
   }
+}
+
+function handleSearch() {
+  loadRoles();
+}
+
+function handleReset() {
+  queryForm.keyword = '';
+  loadRoles();
 }
 
 async function ensureMenuTreeLoaded() {
@@ -160,91 +183,93 @@ onMounted(() => {
       </template>
     </el-alert>
 
-    <el-card shadow="never">
-      <template v-if="pageStatus === 'error'">
-        <div class="role-page__state">
-          <el-result icon="error" title="角色加载失败" :sub-title="errorText || '请稍后重试'">
-            <template #extra>
-              <el-button type="primary" @click="loadRoles">重新加载</el-button>
-            </template>
-          </el-result>
-        </div>
-      </template>
+    <SearchForm
+      :model-value="queryForm"
+      :fields="searchFields"
+      @update:model-value="Object.assign(queryForm, $event)"
+      @search="handleSearch"
+      @reset="handleReset"
+    />
 
-      <template v-else>
-        <el-table v-loading="pageStatus === 'loading'" :data="tableData" row-key="id">
-          <el-table-column label="角色名称" min-width="160">
-            <template #default="{ row }">
-              <div class="role-page__name">
-                <span>{{ row.name }}</span>
-                <el-tag v-if="row.id === 'admin'" size="small" effect="plain">内置</el-tag>
-              </div>
-            </template>
-          </el-table-column>
+    <ProTable
+      :data="tableData"
+      :loading="pageStatus === 'loading'"
+      :error="pageStatus === 'error'"
+      :error-text="errorText || '请稍后重试'"
+      error-title="角色加载失败"
+      row-key="id"
+      @retry="loadRoles"
+    >
+      <el-table-column label="角色名称" min-width="160">
+        <template #default="{ row }">
+          <div class="role-page__name">
+            <span>{{ row.name }}</span>
+            <el-tag v-if="row.id === 'admin'" size="small" effect="plain">内置</el-tag>
+          </div>
+        </template>
+      </el-table-column>
 
-          <el-table-column label="角色编码" prop="code" min-width="140" />
+      <el-table-column label="角色编码" prop="code" min-width="140" />
 
-          <el-table-column label="排序" prop="sort" width="90" align="center" />
+      <el-table-column label="排序" prop="sort" width="90" align="center" />
 
-          <el-table-column label="状态" width="120" align="center">
-            <template #default="{ row }">
-              <el-switch
-                :model-value="row.status"
-                :active-value="1"
-                :inactive-value="0"
-                :disabled="row.id === 'admin' || !hasPermission('system:role:edit')"
-                @change="(value: string | number | boolean) => handleStatusChange(row, value)"
-              />
-            </template>
-          </el-table-column>
+      <el-table-column label="状态" width="120" align="center">
+        <template #default="{ row }">
+          <el-switch
+            :model-value="row.status"
+            :active-value="1"
+            :inactive-value="0"
+            :disabled="row.id === 'admin' || !hasPermission('system:role:edit')"
+            @change="(value: string | number | boolean) => handleStatusChange(row, value)"
+          />
+        </template>
+      </el-table-column>
 
-          <el-table-column label="权限数量" width="110" align="center">
-            <template #default="{ row }">
-              <el-tag effect="light">{{ row.permissions.length }}</el-tag>
-            </template>
-          </el-table-column>
+      <el-table-column label="权限数量" width="110" align="center">
+        <template #default="{ row }">
+          <el-tag effect="light">{{ row.permissions.length }}</el-tag>
+        </template>
+      </el-table-column>
 
-          <el-table-column label="关联用户" width="110" align="center">
-            <template #default="{ row }">
-              <span>{{ row.userCount }}</span>
-            </template>
-          </el-table-column>
+      <el-table-column label="关联用户" width="110" align="center">
+        <template #default="{ row }">
+          <span>{{ row.userCount }}</span>
+        </template>
+      </el-table-column>
 
-          <el-table-column label="创建时间" prop="createdAt" min-width="180" />
+      <el-table-column label="创建时间" prop="createdAt" min-width="180" />
 
-          <el-table-column label="操作" width="270" fixed="right">
-            <template #default="{ row }">
-              <div class="role-page__actions">
-                <el-button
-                  text
-                  type="primary"
-                  :disabled="!hasPermission('system:role:auth')"
-                  @click="openPermissionDialog(row)"
-                >
-                  分配权限
-                </el-button>
-                <el-button
-                  text
-                  type="primary"
-                  :disabled="!hasPermission('system:role:edit')"
-                  @click="openEditDialog(row)"
-                >
-                  修改
-                </el-button>
-                <el-button
-                  text
-                  type="danger"
-                  :disabled="row.id === 'admin' || !hasPermission('system:role:delete')"
-                  @click="handleDelete(row)"
-                >
-                  删除
-                </el-button>
-              </div>
-            </template>
-          </el-table-column>
-        </el-table>
-      </template>
-    </el-card>
+      <el-table-column label="操作" width="270" fixed="right">
+        <template #default="{ row }">
+          <div class="role-page__actions">
+            <el-button
+              text
+              type="primary"
+              :disabled="!hasPermission('system:role:auth')"
+              @click="openPermissionDialog(row)"
+            >
+              分配权限
+            </el-button>
+            <el-button
+              text
+              type="primary"
+              :disabled="!hasPermission('system:role:edit')"
+              @click="openEditDialog(row)"
+            >
+              修改
+            </el-button>
+            <el-button
+              text
+              type="danger"
+              :disabled="row.id === 'admin' || !hasPermission('system:role:delete')"
+              @click="handleDelete(row)"
+            >
+              删除
+            </el-button>
+          </div>
+        </template>
+      </el-table-column>
+    </ProTable>
 
     <RoleFormDialog
       :visible="formVisible"
@@ -274,10 +299,6 @@ onMounted(() => {
 
 .role-page__alert {
   margin-bottom: 16px;
-}
-
-.role-page__state {
-  padding: 24px 0;
 }
 
 .role-page__name,

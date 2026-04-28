@@ -76,6 +76,24 @@ describe('mock contracts', () => {
     expect(menuData[1]?.children?.[0]?.permission).toBe('system:user:view');
     expect(menuData[1]?.children?.[1]?.permission).toBe('system:role:view');
     expect(menuData[2]?.children?.[0]?.permission).toBe('demo:crud:view');
+    expect(findMenuByName(menuData, '组件示例')).toEqual(
+      expect.objectContaining({
+        component: 'ParentView',
+        type: 'directory',
+      }),
+    );
+    expect(findMenuByName(menuData, 'DrawerForm 示例')).toEqual(
+      expect.objectContaining({
+        component: 'demo/components/drawer-form/index',
+        permission: 'demo:components:drawer-form:view',
+      }),
+    );
+    expect(findMenuByName(menuData, '导入导出示例')).toEqual(
+      expect.objectContaining({
+        component: 'demo/import-export/index',
+        permission: 'demo:import-export:view',
+      }),
+    );
   });
 
   it('keeps every menu id unique so dynamic route names do not collide', () => {

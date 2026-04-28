@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
+import ModalForm from '@/components/ModalForm/index.vue';
 import type { SystemRolePayload, SystemRoleRecord } from '@/types/system-role';
 
 const props = defineProps<{
@@ -50,10 +51,6 @@ watch(
   { immediate: true },
 );
 
-function closeDialog() {
-  emit('update:visible', false);
-}
-
 async function submitForm() {
   const isValid = await formRef.value?.validate().catch(() => false);
 
@@ -71,12 +68,14 @@ async function submitForm() {
 </script>
 
 <template>
-  <el-dialog
-    :model-value="visible"
+  <ModalForm
+    :visible="visible"
     :title="dialogTitle"
     width="560px"
-    destroy-on-close
-    @close="closeDialog"
+    :submitting="submitting"
+    confirm-text="保存"
+    @confirm="submitForm"
+    @update:visible="emit('update:visible', $event)"
   >
     <el-form ref="formRef" :model="formModel" :rules="rules" label-width="96px">
       <el-form-item label="角色名称" prop="name">
@@ -102,10 +101,5 @@ async function submitForm() {
         <el-input v-model="formModel.remark" type="textarea" :rows="3" placeholder="请输入备注" />
       </el-form-item>
     </el-form>
-
-    <template #footer>
-      <el-button @click="closeDialog">取消</el-button>
-      <el-button type="primary" :loading="submitting" @click="submitForm">保存</el-button>
-    </template>
-  </el-dialog>
+  </ModalForm>
 </template>

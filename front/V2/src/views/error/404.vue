@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
+import { DASHBOARD_PATH } from '@/constants/route';
 
 const router = useRouter();
 </script>
@@ -8,7 +9,7 @@ const router = useRouter();
   <div class="not-found-page">
     <el-result icon="warning" title="404" sub-title="抱歉，你访问的页面不存在">
       <template #extra>
-        <el-button type="primary" @click="router.push('/dashboard')">返回首页</el-button>
+        <el-button type="primary" @click="router.push(DASHBOARD_PATH)">返回首页</el-button>
       </template>
     </el-result>
   </div>

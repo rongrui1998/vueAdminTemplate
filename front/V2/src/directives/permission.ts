@@ -3,6 +3,12 @@ import type { Directive } from 'vue';
 import { pinia } from '@/store';
 import { usePermissionStore } from '@/store/modules/permission';
 
+interface PermissionAnchorState {
+  anchor: Comment;
+}
+
+const anchorState = new WeakMap<HTMLElement, PermissionAnchorState>();
+
 function hasPermission(value: string | string[] | undefined) {
   const permissionStore = usePermissionStore(getActivePinia() ?? pinia);
 
@@ -18,18 +24,36 @@ function hasPermission(value: string | string[] | undefined) {
 }
 
 function updateVisibility(el: HTMLElement, value: string | string[] | undefined) {
-  if (hasPermission(value)) {
+  const state = anchorState.get(el);
+
+  if (!state) {
     return;
   }
 
-  el.remove();
+  if (hasPermission(value)) {
+    if (!el.parentNode) {
+      state.anchor.after(el);
+    }
+    return;
+  }
+
+  if (el.parentNode) {
+    el.remove();
+  }
 }
 
 export const permissionDirective: Directive<HTMLElement, string | string[]> = {
   mounted(el, binding) {
+    const anchor = document.createComment('v-permission');
+    el.before(anchor);
+    anchorState.set(el, { anchor });
     updateVisibility(el, binding.value);
   },
   updated(el, binding) {
     updateVisibility(el, binding.value);
+  },
+  unmounted(el) {
+    anchorState.get(el)?.anchor.remove();
+    anchorState.delete(el);
   },
 };

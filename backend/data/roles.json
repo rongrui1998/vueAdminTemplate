@@ -21,7 +21,12 @@
       "system:menu:create",
       "system:menu:edit",
       "system:menu:delete",
-      "demo:crud:view"
+      "demo:crud:view",
+      "demo:components:search-form:view",
+      "demo:components:pro-table:view",
+      "demo:components:modal-form:view",
+      "demo:components:drawer-form:view",
+      "demo:import-export:view"
     ],
     "menuIds": [
       "dashboard",
@@ -41,7 +46,13 @@
       "system-menu-edit",
       "system-menu-delete",
       "demo-root",
-      "demo-crud"
+      "demo-crud",
+      "demo-components-root",
+      "demo-components-search-form",
+      "demo-components-pro-table",
+      "demo-components-modal-form",
+      "demo-components-drawer-form",
+      "demo-import-export"
     ],
     "createdAt": "2026-04-27 10:00:00",
     "remark": "拥有系统全部管理权限"

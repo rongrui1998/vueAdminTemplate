@@ -11,6 +11,7 @@ import {
 } from '@/api/system-menu';
 import AppIcon from '@/components/AppIcon/index.vue';
 import PageContainer from '@/components/PageContainer/index.vue';
+import ProTable from '@/components/ProTable/index.vue';
 import { getStandardDataSourceLabel, isStandardApiMode } from '@/constants/standard';
 import type { SystemMenuFormMode, SystemMenuPayload, SystemMenuRecord } from '@/types/system-menu';
 import { menuTypeLabelMap, menuTypeTagTypeMap } from './constants';
@@ -262,18 +263,119 @@ onMounted(() => {
       </template>
     </el-alert>
 
-    <el-card shadow="never">
-      <template v-if="pageStatus === 'error'">
-        <div class="menu-page__state">
-          <el-result icon="error" title="菜单加载失败" :sub-title="errorText || '请稍后重试'">
-            <template #extra>
-              <el-button type="primary" @click="loadMenus">重新加载</el-button>
-            </template>
-          </el-result>
-        </div>
-      </template>
+    <ProTable
+      :data="visibleRows"
+      :loading="pageStatus === 'loading'"
+      :error="pageStatus === 'error'"
+      :error-text="errorText || '请稍后重试'"
+      error-title="菜单加载失败"
+      row-key="id"
+      table-class="menu-page__table"
+      @retry="loadMenus"
+    >
+      <el-table-column label="菜单名称" min-width="280">
+        <template #default="{ row }">
+          <div class="menu-page__name-cell">
+            <span
+              v-if="row.__level > 0"
+              class="menu-page__name-indent"
+              :style="{ width: `${row.__level * 32}px` }"
+            />
+            <button
+              v-if="row.__hasChildren"
+              type="button"
+              class="menu-page__expand-trigger"
+              :aria-label="row.__expanded ? '收起菜单' : '展开菜单'"
+              @click.stop="toggleRowExpand(row)"
+            >
+              <el-icon :size="14">
+                <ArrowDown v-if="row.__expanded" />
+                <ArrowRight v-else />
+              </el-icon>
+            </button>
+            <span v-else class="menu-page__expand-placeholder" />
+            <AppIcon :name="row.icon || 'Menu'" :size="18" />
+            <span class="menu-page__name-text">{{ row.name }}</span>
+          </div>
+        </template>
+      </el-table-column>
 
-      <template v-else-if="pageStatus === 'success' && !tableData.length">
+      <el-table-column label="类型" width="110">
+        <template #default="{ row }">
+          <el-tag :type="getRowTypeTag(row)" effect="light">
+            {{ getRowTypeLabel(row) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+
+      <el-table-column label="排序" width="100" align="center">
+        <template #default="{ row }">
+          <span class="menu-page__sort-value">{{ row.sort ?? 0 }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column label="权限标识" min-width="220">
+        <template #default="{ row }">
+          <span class="menu-page__muted">{{ row.permission || '-' }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column label="路由地址" min-width="190">
+        <template #default="{ row }">
+          <span class="menu-page__muted">{{ normalizePath(row.path) }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column label="页面组件" min-width="220">
+        <template #default="{ row }">
+          <span class="menu-page__muted">{{ row.component || '-' }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column label="状态" width="120" align="center">
+        <template #default="{ row }">
+          <el-switch
+            :model-value="row.status ?? 1"
+            :active-value="1"
+            :inactive-value="0"
+            :disabled="!hasPermission('system:menu:edit')"
+            @change="(value: string | number | boolean) => handleStatusChange(row, value)"
+          />
+        </template>
+      </el-table-column>
+
+      <el-table-column label="操作" width="240" fixed="right">
+        <template #default="{ row }">
+          <div class="menu-page__actions">
+            <el-button
+              text
+              type="primary"
+              :disabled="row.type === 'button' || !hasPermission('system:menu:create')"
+              @click="openCreateChildDialog(row)"
+            >
+              新增下级
+            </el-button>
+            <el-button
+              text
+              type="primary"
+              :disabled="!hasPermission('system:menu:edit')"
+              @click="openEditDialog(row)"
+            >
+              修改
+            </el-button>
+            <el-button
+              text
+              type="danger"
+              :disabled="!hasPermission('system:menu:delete')"
+              @click="handleDelete(row)"
+            >
+              删除
+            </el-button>
+          </div>
+        </template>
+      </el-table-column>
+
+      <template #empty>
         <div class="menu-page__state">
           <el-empty description="暂无菜单数据">
             <template #default>
@@ -285,118 +387,7 @@ onMounted(() => {
           </el-empty>
         </div>
       </template>
-
-      <template v-else>
-        <el-table
-          v-loading="pageStatus === 'loading'"
-          :data="visibleRows"
-          row-key="id"
-          class="menu-page__table"
-        >
-          <el-table-column label="菜单名称" min-width="280">
-            <template #default="{ row }">
-              <div class="menu-page__name-cell">
-                <span
-                  v-if="row.__level > 0"
-                  class="menu-page__name-indent"
-                  :style="{ width: `${row.__level * 32}px` }"
-                />
-                <button
-                  v-if="row.__hasChildren"
-                  type="button"
-                  class="menu-page__expand-trigger"
-                  :aria-label="row.__expanded ? '收起菜单' : '展开菜单'"
-                  @click.stop="toggleRowExpand(row)"
-                >
-                  <el-icon :size="14">
-                    <ArrowDown v-if="row.__expanded" />
-                    <ArrowRight v-else />
-                  </el-icon>
-                </button>
-                <span v-else class="menu-page__expand-placeholder" />
-                <AppIcon :name="row.icon || 'Menu'" :size="18" />
-                <span class="menu-page__name-text">{{ row.name }}</span>
-              </div>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="类型" width="110">
-            <template #default="{ row }">
-              <el-tag :type="getRowTypeTag(row)" effect="light">
-                {{ getRowTypeLabel(row) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="排序" width="100" align="center">
-            <template #default="{ row }">
-              <span class="menu-page__sort-value">{{ row.sort ?? 0 }}</span>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="权限标识" min-width="220">
-            <template #default="{ row }">
-              <span class="menu-page__muted">{{ row.permission || '-' }}</span>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="路由地址" min-width="190">
-            <template #default="{ row }">
-              <span class="menu-page__muted">{{ normalizePath(row.path) }}</span>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="页面组件" min-width="220">
-            <template #default="{ row }">
-              <span class="menu-page__muted">{{ row.component || '-' }}</span>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="状态" width="120" align="center">
-            <template #default="{ row }">
-              <el-switch
-                :model-value="row.status ?? 1"
-                :active-value="1"
-                :inactive-value="0"
-                :disabled="!hasPermission('system:menu:edit')"
-                @change="(value: string | number | boolean) => handleStatusChange(row, value)"
-              />
-            </template>
-          </el-table-column>
-
-          <el-table-column label="操作" width="240" fixed="right">
-            <template #default="{ row }">
-              <div class="menu-page__actions">
-                <el-button
-                  text
-                  type="primary"
-                  :disabled="row.type === 'button' || !hasPermission('system:menu:create')"
-                  @click="openCreateChildDialog(row)"
-                >
-                  新增下级
-                </el-button>
-                <el-button
-                  text
-                  type="primary"
-                  :disabled="!hasPermission('system:menu:edit')"
-                  @click="openEditDialog(row)"
-                >
-                  修改
-                </el-button>
-                <el-button
-                  text
-                  type="danger"
-                  :disabled="!hasPermission('system:menu:delete')"
-                  @click="handleDelete(row)"
-                >
-                  删除
-                </el-button>
-              </div>
-            </template>
-          </el-table-column>
-        </el-table>
-      </template>
-    </el-card>
+    </ProTable>
 
     <MenuFormDialog
       :visible="dialogVisible"

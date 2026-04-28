@@ -18,6 +18,7 @@
 - `VITE_API_BASE_URL`：后端接口前缀
 - `VITE_USE_MOCK`：切真实后端时建议改成 `false`
 - `VITE_MENU_SOURCE`：接后端菜单时改成 `api`
+- `VITE_STANDARD_DATA_SOURCE`：用户、角色、菜单等 Standard 模块切真实接口时改成 `api`
 
 推荐组合：
 
@@ -25,6 +26,7 @@
 VITE_API_BASE_URL=/api
 VITE_USE_MOCK=false
 VITE_MENU_SOURCE=api
+VITE_STANDARD_DATA_SOURCE=api
 ```
 
 ## 3. 通用响应结构
@@ -43,7 +45,7 @@ interface ApiResponse<T> {
 
 约定说明：
 
-- `code === 0` 视为业务成功
+- `code === 200` 视为业务成功
 - `msg` 为错误或提示文案
 - `data` 为真实业务数据
 - `tip` 为可选补充提示

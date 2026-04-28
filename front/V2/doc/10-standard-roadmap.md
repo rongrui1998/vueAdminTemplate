@@ -49,6 +49,9 @@ Standard 版本建议在 Base 之上重点补齐：
 - 已完成：用户管理列表、新增、修改、删除、启停用、重置密码、角色绑定、mock/api 接口和后端 JSON 持久化。
 - 已完成：真实账号、角色、菜单和按钮权限的第一阶段闭环验证。
 - 已完成：mock 模式下账号、用户、角色、菜单、登录态、用户信息和侧边栏菜单权限统一到运行态数据源，支持新增用户后登录、角色授权后刷新权限、菜单新增后参与权限过滤。
+- 已完成：通用业务组件第一阶段，已补 `SearchForm`、`ProTable`、`ModalForm`、`DrawerForm` 基础封装，并完成独立组件示例页，使用者可以选择原生 Element Plus 写法或模板封装写法。
+- 已完成：上传、CSV 导入预览、CSV 导出下载的前端轻量示例。
+- 进行中：操作日志等 Standard 增强能力。
 
 ## 5. 当前文档入口
 
@@ -63,5 +66,6 @@ Standard 版本建议在 Base 之上重点补齐：
 - `doc/plans/2026-04-28-v2-role-management-plan.md`
 - `doc/plans/2026-04-28-v2-user-management-design.md`
 - `doc/plans/2026-04-28-v2-user-management-plan.md`
+- `doc/plans/2026-04-28-v2-component-showcase-plan.md`
 - `doc/07-base-overview-and-usage.md`
 - `doc/08-backend-integration-contract.md`

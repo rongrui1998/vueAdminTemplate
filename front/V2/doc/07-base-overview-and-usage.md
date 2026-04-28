@@ -270,7 +270,7 @@ src/views/customer/list.vue
 
 例如：
 
-````ts
+```ts
 {
   id: 'customer-list',
   name: '客户列表',
@@ -281,34 +281,6 @@ src/views/customer/list.vue
   permission: 'customer:list',
   children: [],
 }
-
-## 10. 测试与质量护栏
-
-当前 Base 已内置以下验证：
-
-- 路由守卫测试：覆盖登录拦截、403 分流、动态路由恢复、权限页直达
-- mock 契约测试：覆盖菜单 id 唯一性和基础返回结构
-- 页面测试：覆盖权限示例页的按钮权限差异
-- 组件测试：覆盖 `TopNav` 消息面板开关和 `TagViews` 右键菜单关键行为
-- 工程质量：`eslint + stylelint + vitest + build`
-
-本地推荐执行：
-
-```bash
-pnpm lint
-pnpm stylelint
-pnpm test
-pnpm build
-````
-
-## 11. 推荐阅读路径
-
-- 想快速上手：先看本文件，再看 `00-base-completion-summary.md`
-- 想理解菜单和动态路由：看 `02-menu-and-routing.md`
-- 想理解权限链路：看 `03-permission-and-auth.md`
-- 想切换 mock / api：看 `04-mock-and-api.md`
-- 想接后端：看 `08-backend-integration-contract.md`
-
 ```
 
 ### 第 3 步：补权限码
@@ -336,21 +308,34 @@ pnpm build
 - 权限表现符合预期
 - `pnpm lint` / `pnpm test` / `pnpm build` 通过
 
-## 10. 使用时的注意事项
+## 10. 测试与质量护栏
 
-### 10.1 这是 Base，不是 Standard
+当前 Base 已内置以下验证：
 
-当前 Base 还没有：
+- 路由守卫测试：覆盖登录拦截、403 分流、动态路由恢复、权限页直达
+- mock 契约测试：覆盖菜单 id 唯一性和基础返回结构
+- 页面测试：覆盖权限示例页的按钮权限差异
+- 组件测试：覆盖 `TopNav` 消息面板开关和 `TagViews` 右键菜单关键行为
+- 工程质量：`eslint + stylelint + vitest + build`
 
-- 用户管理
-- 角色管理
-- 菜单管理
-- 数据权限
-- 完整 RBAC
+本地推荐执行：
 
-所以不要把它当成已经具备“后台平台管理能力”的成品。
+```bash
+pnpm lint
+pnpm stylelint
+pnpm test
+pnpm build
+```
 
-### 10.2 菜单是整条主链路的核心输入
+## 11. 使用时的注意事项
+
+### 11.1 V2 是 Standard 工作区，不再只是 Base
+
+`front/V2` 继承了 Base 能力，同时已经开始补 Standard 能力。
+
+当前已补充用户管理、角色管理、菜单管理和 Node.js JSON 后端骨架，但仍建议把它理解为“Standard 进行中版本”，不要把它当成已包含数据权限、审计、导入导出等完整平台能力的最终成品。
+
+### 11.2 菜单是整条主链路的核心输入
 
 如果出现页面进不去、菜单不显示、路由不生效，优先检查：
 
@@ -359,7 +344,7 @@ pnpm build
 - `type` 是否正确
 - `status` 是否被关闭
 
-### 10.3 mock 适合演示，不等于真实后端契约
+### 11.3 mock 适合演示，不等于真实后端契约
 
 当前 mock 已足够演示 Base 流程，但真实后端接入时仍需要重新确认：
 
@@ -368,7 +353,7 @@ pnpm build
 - 权限码规则
 - 菜单结构约定
 
-### 10.4 Base 推荐“轻扩展”
+### 11.4 Base 能力推荐轻扩展
 
 如果是基于 Base 做新项目，建议优先：
 
@@ -377,16 +362,29 @@ pnpm build
 - 在示例页基础上扩展业务页
 - 尽量不要一开始就重写整套框架
 
-## 11. 当前质量门槛
+### 11.5 通用组件是可选积木，不是强制规范
 
-本地开发和提交前建议至少保证：
+V2 Standard 已补充 `SearchForm`、`ProTable`、`ModalForm`、`DrawerForm` 四个通用组件，并在「业务示例 / 组件示例」下提供独立页面。
 
-- `pnpm lint`
-- `pnpm stylelint`
-- `pnpm test`
-- `pnpm build`
+使用建议：
 
-当前 `front/V2` 的本地工程约束与 `V3 Base` 保持一致，迁移完成后建议继续沿用同样的质量校验。
+- 常规查询区可以使用 `SearchForm`
+- 常规列表外壳可以使用 `ProTable`
+- 新增、编辑弹窗可以使用 `ModalForm`
+- 详情、预览、复杂编辑可以使用 `DrawerForm`
+
+这些封装的定位是提效和统一体验。业务页面仍然可以直接使用 Element Plus 的 `el-form`、`el-table`、`el-dialog`、`el-drawer` 自己实现，不需要为了“统一”牺牲复杂场景的灵活性。
+
+### 11.6 导入导出示例是前端轻量闭环
+
+V2 Standard 已在「业务示例 / 导入导出示例」下提供 CSV 文件选择、导入预览、确认应用和导出下载示例。
+
+当前示例不引入 Excel 解析库，也不上传到后端，主要用于说明标准后台里上传、导入、导出的交互骨架。真实项目可以按需替换为：
+
+- 后端上传接口
+- Excel 解析库
+- 导入任务进度
+- 错误行下载
 
 ## 12. 推荐阅读顺序
 
@@ -397,8 +395,8 @@ pnpm build
 - `04-mock-and-api.md`：看 mock 与 request 约定
 - `05-page-and-component-conventions.md`：看页面结构规范
 - `06-extension-suggestions.md`：看后续演进方向
+- `10-standard-roadmap.md`：看 V2 Standard 的阶段进度
 
 ## 13. 一句话总结
 
 当前 `front/V2` 已经具备一个 **可直接进入 Standard 开发阶段** 的后台模板基线。
-```
