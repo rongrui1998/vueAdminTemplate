@@ -14,18 +14,10 @@ const props = defineProps<{
 const visibleChildren = computed(() =>
   props.menu.children.filter((item) => !item.hidden && item.type !== 'button'),
 );
-const singleVisibleChild = computed(() =>
-  visibleChildren.value.length === 1 ? visibleChildren.value[0] : null,
-);
 </script>
 
 <template>
-  <el-menu-item v-if="singleVisibleChild" :index="singleVisibleChild.fullPath">
-    <AppIcon :name="singleVisibleChild.icon || menu.icon" />
-    <template #title>{{ singleVisibleChild.name }}</template>
-  </el-menu-item>
-
-  <el-sub-menu v-else-if="visibleChildren.length" :index="menu.fullPath">
+  <el-sub-menu v-if="visibleChildren.length" :index="menu.fullPath">
     <template #title>
       <AppIcon :name="menu.icon" />
       <span>{{ menu.name }}</span>

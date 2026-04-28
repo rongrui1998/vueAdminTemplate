@@ -84,7 +84,7 @@ async function writeMenus(list) {
 
 export async function getMenuListForRoleIds(roleIds) {
   const [menus, roles] = await Promise.all([readMenus(), readJson('roles.json')]);
-  const matchedRoles = roles.filter((item) => roleIds.includes(item.id));
+  const matchedRoles = roles.filter((item) => roleIds.includes(item.id) && item.status !== 0);
   const allowedIds = new Set(matchedRoles.flatMap((item) => item.menuIds || []));
   return filterMenusByIds(menus, allowedIds);
 }
@@ -105,6 +105,7 @@ export async function createSystemMenu(payload) {
   if (!normalized.parentId) {
     menus.push(nextItem);
     await writeMenus(menus);
+    await grantMenuToAdmin(nextItem);
     return nextItem;
   }
 
@@ -117,7 +118,25 @@ export async function createSystemMenu(payload) {
   parent.node.children = parent.node.children || [];
   parent.node.children.push(nextItem);
   await writeMenus(menus);
+  await grantMenuToAdmin(nextItem);
   return nextItem;
+}
+
+async function grantMenuToAdmin(item) {
+  const roles = await readJson('roles.json');
+  const adminRole = roles.find((role) => role.id === 'admin');
+
+  if (!adminRole) {
+    return;
+  }
+
+  adminRole.menuIds = [...new Set([...(adminRole.menuIds || []), item.id])];
+
+  if (item.permission) {
+    adminRole.permissions = [...new Set([...(adminRole.permissions || []), item.permission])];
+  }
+
+  await writeJson('roles.json', roles);
 }
 
 export async function updateSystemMenu(id, payload) {

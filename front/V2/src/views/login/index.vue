@@ -30,7 +30,7 @@ async function handleLogin() {
   try {
     await authStore.login(formModel);
     await authStore.fetchUserInfo(true);
-    permissionStore.routeLoaded = false;
+    permissionStore.resetPermissionState(router);
     const redirect =
       typeof route.query.redirect === 'string' ? route.query.redirect : DASHBOARD_PATH;
     ElMessage.success('登录成功');

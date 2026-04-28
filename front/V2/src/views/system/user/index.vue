@@ -1,127 +1,271 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { ElMessage } from 'element-plus';
+import { Plus, RefreshRight } from '@element-plus/icons-vue';
+import { getSystemRolesApi } from '@/api/system-role';
+import {
+  createSystemUserApi,
+  deleteSystemUserApi,
+  getSystemUsersApi,
+  resetSystemUserPasswordApi,
+  updateSystemUserApi,
+} from '@/api/system-user';
 import PageContainer from '@/components/PageContainer/index.vue';
+import { usePermission } from '@/composables/usePermission';
 import { getStandardDataSourceLabel, isStandardApiMode } from '@/constants/standard';
+import type { SystemRoleRecord } from '@/types/system-role';
+import type { SystemUserPayload, SystemUserRecord } from '@/types/system-user';
+import UserFormDialog from './components/UserFormDialog.vue';
 
 const dataSourceLabel = computed(() => getStandardDataSourceLabel());
-const isApiMode = computed(() => isStandardApiMode());
+const sourceStatus = computed(() => (isStandardApiMode() ? '接口联调中' : 'Mock 先行中'));
+const { hasPermission } = usePermission();
+const pageStatus = ref<'loading' | 'error' | 'success'>('loading');
+const errorText = ref('');
+const tableData = ref<SystemUserRecord[]>([]);
+const roleOptions = ref<SystemRoleRecord[]>([]);
+const formVisible = ref(false);
+const currentRecord = ref<SystemUserRecord | null>(null);
+const submitLoading = ref(false);
 
-const nextSteps = [
-  '补齐用户列表、筛选区和状态切换',
-  '接入角色绑定、重置密码、启停用操作',
-  '支持 mock / api 双模式读取同一套页面',
-];
+async function loadUsers() {
+  pageStatus.value = 'loading';
+  errorText.value = '';
+
+  try {
+    const result = await getSystemUsersApi();
+    tableData.value = result.list;
+    pageStatus.value = 'success';
+  } catch (error) {
+    tableData.value = [];
+    pageStatus.value = 'error';
+    errorText.value = error instanceof Error ? error.message : '加载用户数据失败';
+  }
+}
+
+async function ensureRoleOptionsLoaded() {
+  if (roleOptions.value.length) {
+    return;
+  }
+
+  const result = await getSystemRolesApi();
+  roleOptions.value = result.list;
+}
+
+async function openCreateDialog() {
+  currentRecord.value = null;
+  await ensureRoleOptionsLoaded();
+  formVisible.value = true;
+}
+
+async function openEditDialog(row: SystemUserRecord) {
+  currentRecord.value = row;
+  await ensureRoleOptionsLoaded();
+  formVisible.value = true;
+}
+
+async function handleSubmit(payload: SystemUserPayload) {
+  submitLoading.value = true;
+
+  try {
+    if (currentRecord.value) {
+      await updateSystemUserApi(currentRecord.value.id, payload);
+      ElMessage.success('用户修改成功');
+    } else {
+      await createSystemUserApi(payload);
+      ElMessage.success('用户新增成功');
+    }
+
+    formVisible.value = false;
+    await loadUsers();
+  } finally {
+    submitLoading.value = false;
+  }
+}
+
+async function handleStatusChange(row: SystemUserRecord, value: number | string | boolean) {
+  await updateSystemUserApi(row.id, {
+    username: row.username,
+    nickname: row.nickname,
+    roleIds: row.roleIds,
+    status: Number(value),
+    remark: row.remark || '',
+  });
+
+  ElMessage.success(`已${Number(value) === 1 ? '启用' : '停用'}用户`);
+  await loadUsers();
+}
+
+async function handleResetPassword(row: SystemUserRecord) {
+  const confirmed = window.confirm(`确认将“${row.nickname}”的密码重置为 123456 吗？`);
+
+  if (!confirmed) {
+    return;
+  }
+
+  await resetSystemUserPasswordApi(row.id, { password: '123456' });
+  ElMessage.success('密码已重置为 123456');
+}
+
+async function handleDelete(row: SystemUserRecord) {
+  const confirmed = window.confirm(`确认删除“${row.nickname}”吗？`);
+
+  if (!confirmed) {
+    return;
+  }
+
+  await deleteSystemUserApi(row.id);
+  ElMessage.success('用户删除成功');
+  await loadUsers();
+}
+
+onMounted(() => {
+  loadUsers();
+});
 </script>
 
 <template>
   <PageContainer title="用户管理">
-    <el-row :gutter="16">
-      <el-col :xs="24" :lg="15">
-        <el-card shadow="never">
-          <template #header>
-            <div class="system-page__header">
-              <span>模块状态</span>
-              <el-tag :type="isApiMode ? 'success' : 'primary'" effect="light">
-                当前数据源：{{ dataSourceLabel }}
-              </el-tag>
-            </div>
-          </template>
+    <template #extra>
+      <div class="user-page__toolbar">
+        <el-button
+          type="primary"
+          :icon="Plus"
+          :disabled="!hasPermission('system:user:create')"
+          @click="openCreateDialog"
+        >
+          新增用户
+        </el-button>
+        <el-button circle :icon="RefreshRight" @click="loadUsers" />
+      </div>
+    </template>
 
-          <div class="system-page__hero">
-            <div>
-              <div class="system-page__eyebrow">Standard Phase 1</div>
-              <div class="system-page__headline">用户管理已进入 Standard 骨架阶段</div>
-              <div class="system-page__desc">
-                当前页面已经作为系统管理正式模块接入菜单、面包屑与标签页。下一步会在这里补齐列表、角色绑定、启停用和重置密码等真实管理能力。
+    <el-alert type="info" :closable="false" class="user-page__alert">
+      <template #title>
+        当前数据源：{{ dataSourceLabel }}，{{ sourceStatus }}。用户管理已支持 mock / api
+        双模式列表、角色绑定和账号维护。
+      </template>
+    </el-alert>
+
+    <el-card shadow="never">
+      <template v-if="pageStatus === 'error'">
+        <div class="user-page__state">
+          <el-result icon="error" title="用户加载失败" :sub-title="errorText || '请稍后重试'">
+            <template #extra>
+              <el-button type="primary" @click="loadUsers">重新加载</el-button>
+            </template>
+          </el-result>
+        </div>
+      </template>
+
+      <template v-else>
+        <el-table v-loading="pageStatus === 'loading'" :data="tableData" row-key="id">
+          <el-table-column label="登录账号" prop="username" min-width="140" />
+
+          <el-table-column label="用户昵称" min-width="150">
+            <template #default="{ row }">
+              <div class="user-page__name">
+                <span>{{ row.nickname }}</span>
+                <el-tag v-if="row.username === 'admin'" size="small" effect="plain">内置</el-tag>
               </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
+            </template>
+          </el-table-column>
 
-      <el-col :xs="24" :lg="9">
-        <el-card shadow="never">
-          <template #header>
-            <div class="system-page__header">
-              <span>本阶段目标</span>
-              <el-tag type="warning" effect="plain">进行中</el-tag>
-            </div>
-          </template>
+          <el-table-column label="绑定角色" min-width="200">
+            <template #default="{ row }">
+              <div class="user-page__roles">
+                <el-tag v-for="roleName in row.roleNames" :key="roleName" effect="light">
+                  {{ roleName }}
+                </el-tag>
+              </div>
+            </template>
+          </el-table-column>
 
-          <div class="system-page__steps">
-            <div v-for="item in nextSteps" :key="item" class="system-page__step">
-              <span class="system-page__step-dot" />
-              <span>{{ item }}</span>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+          <el-table-column label="状态" width="120" align="center">
+            <template #default="{ row }">
+              <el-switch
+                :model-value="row.status"
+                :active-value="1"
+                :inactive-value="0"
+                :disabled="row.username === 'admin' || !hasPermission('system:user:edit')"
+                @change="(value: string | number | boolean) => handleStatusChange(row, value)"
+              />
+            </template>
+          </el-table-column>
+
+          <el-table-column label="最后登录" prop="lastLoginAt" min-width="170" />
+
+          <el-table-column label="创建时间" prop="createdAt" min-width="170" />
+
+          <el-table-column label="操作" width="300" fixed="right">
+            <template #default="{ row }">
+              <div class="user-page__actions">
+                <el-button
+                  text
+                  type="primary"
+                  :disabled="!hasPermission('system:user:reset')"
+                  @click="handleResetPassword(row)"
+                >
+                  重置密码
+                </el-button>
+                <el-button
+                  text
+                  type="primary"
+                  :disabled="!hasPermission('system:user:edit')"
+                  @click="openEditDialog(row)"
+                >
+                  修改
+                </el-button>
+                <el-button
+                  text
+                  type="danger"
+                  :disabled="row.username === 'admin' || !hasPermission('system:user:delete')"
+                  @click="handleDelete(row)"
+                >
+                  删除
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </template>
+    </el-card>
+
+    <UserFormDialog
+      :visible="formVisible"
+      :record="currentRecord"
+      :role-options="roleOptions"
+      :submitting="submitLoading"
+      @submit="handleSubmit"
+      @update:visible="formVisible = $event"
+    />
   </PageContainer>
 </template>
 
 <style scoped>
-.system-page__header {
+.user-page__toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.system-page__hero {
-  min-height: 240px;
-  padding: 28px;
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 20px;
-  background:
-    radial-gradient(circle at top right, rgb(64 158 255 / 0.12), transparent 24%),
-    linear-gradient(145deg, var(--el-fill-color-blank), rgb(64 158 255 / 0.03));
-}
-
-.system-page__eyebrow {
-  color: var(--el-color-primary);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.system-page__headline {
-  margin-top: 14px;
-  font-size: 26px;
-  font-weight: 700;
-  line-height: 1.35;
-}
-
-.system-page__desc {
-  max-width: 620px;
-  margin-top: 14px;
-  color: var(--el-text-color-secondary);
-  line-height: 1.8;
-}
-
-.system-page__steps {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.system-page__step {
-  display: flex;
-  align-items: flex-start;
   gap: 10px;
-  color: var(--el-text-color-regular);
-  line-height: 1.7;
 }
 
-.system-page__step-dot {
-  width: 8px;
-  height: 8px;
-  margin-top: 9px;
-  border-radius: 50%;
-  background: var(--el-color-primary);
-  flex-shrink: 0;
+.user-page__alert {
+  margin-bottom: 16px;
+}
+
+.user-page__state {
+  padding: 24px 0;
+}
+
+.user-page__name,
+.user-page__roles,
+.user-page__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-page__roles {
+  flex-wrap: wrap;
 }
 </style>

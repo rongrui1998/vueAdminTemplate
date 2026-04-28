@@ -12,7 +12,11 @@ function normalizeToken(headers = {}) {
 
 export async function findUserByCredentials(username, password) {
   const users = await readJson('users.json');
-  return users.find((item) => item.username === username && item.password === password) || null;
+  return (
+    users.find(
+      (item) => item.username === username && item.password === password && item.status !== 0,
+    ) || null
+  );
 }
 
 export async function findUserByToken(headers) {
@@ -23,12 +27,12 @@ export async function findUserByToken(headers) {
   }
 
   const users = await readJson('users.json');
-  return users.find((item) => item.token === token) || null;
+  return users.find((item) => item.token === token && item.status !== 0) || null;
 }
 
 export async function buildUserAccessPayload(user) {
   const roles = await readJson('roles.json');
-  const matchedRoles = roles.filter((item) => user.roleIds.includes(item.id));
+  const matchedRoles = roles.filter((item) => user.roleIds.includes(item.id) && item.status !== 0);
   const permissions = [...new Set(matchedRoles.flatMap((item) => item.permissions || []))];
 
   return {

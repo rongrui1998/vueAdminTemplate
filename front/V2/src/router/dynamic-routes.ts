@@ -3,12 +3,25 @@ import type { AppMenuItem } from '@/types/menu';
 import { buildRouteMeta, normalizeChildPath } from '@/router/helper';
 import { ParentView, resolveRouteComponent } from '@/router/route-map';
 
-function createRouteRecord(menu: AppMenuItem): RouteRecordRaw | null {
+function getRoutePath(menu: AppMenuItem, parentFullPath = '') {
+  const fullPath = menu.fullPath || menu.path;
+  const normalizedParent = parentFullPath.replace(/\/+$/, '');
+
+  if (normalizedParent && fullPath.startsWith(`${normalizedParent}/`)) {
+    return normalizeChildPath(fullPath.slice(normalizedParent.length + 1));
+  }
+
+  return normalizeChildPath(fullPath);
+}
+
+function createRouteRecord(menu: AppMenuItem, parentFullPath = ''): RouteRecordRaw | null {
   if (menu.type === 'button') {
     return null;
   }
 
-  const childRoutes = menu.children.map(createRouteRecord).filter(Boolean) as RouteRecordRaw[];
+  const childRoutes = menu.children
+    .map((child) => createRouteRecord(child, menu.fullPath))
+    .filter(Boolean) as RouteRecordRaw[];
   const isDirectory = menu.type === 'directory' || childRoutes.length > 0;
 
   if (isDirectory && !childRoutes.length) {
@@ -20,7 +33,7 @@ function createRouteRecord(menu: AppMenuItem): RouteRecordRaw | null {
     : resolveRouteComponent(menu.component);
 
   return {
-    path: normalizeChildPath(menu.path),
+    path: getRoutePath(menu, parentFullPath),
     name: menu.routeName,
     component: resolved.component,
     meta: {
@@ -32,7 +45,7 @@ function createRouteRecord(menu: AppMenuItem): RouteRecordRaw | null {
 }
 
 export function generateDynamicRoutes(menus: AppMenuItem[]) {
-  return menus.map(createRouteRecord).filter(Boolean) as RouteRecordRaw[];
+  return menus.map((menu) => createRouteRecord(menu)).filter(Boolean) as RouteRecordRaw[];
 }
 
 export function collectDynamicRouteNames(routes: RouteRecordRaw[]) {

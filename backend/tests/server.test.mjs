@@ -154,6 +154,20 @@ test('system menu endpoints support create, update, and delete', async () => {
 
     assert.ok(createdMenu);
 
+    const adminMenuResponse = await fetch(`${app.baseUrl}/api/menu/list`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const adminMenuPayload = await adminMenuResponse.json();
+
+    assert.equal(
+      adminMenuPayload.data.list.some((item) =>
+        item.children?.some((child) => child.name === '部门管理'),
+      ),
+      true,
+    );
+
     const updateResponse = await fetch(`${app.baseUrl}/api/system/menus/${createdMenu.id}`, {
       method: 'PUT',
       headers: {
@@ -191,6 +205,126 @@ test('system menu endpoints support create, update, and delete', async () => {
 
     assert.equal(deleteResponse.status, 200);
     assert.equal(deletePayload.code, 200);
+  } finally {
+    await app.close();
+    await app.cleanup();
+  }
+});
+
+test('system role endpoints support listing and menu authorization', async () => {
+  const app = await startTestServer();
+
+  try {
+    const loginResponse = await fetch(`${app.baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: 'admin',
+        password: '123456',
+      }),
+    });
+    const loginPayload = await loginResponse.json();
+    const token = loginPayload.data.token;
+
+    const roleListResponse = await fetch(`${app.baseUrl}/api/system/roles`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const roleListPayload = await roleListResponse.json();
+
+    assert.equal(roleListResponse.status, 200);
+    assert.equal(roleListPayload.code, 200);
+    assert.equal(roleListPayload.data.list.some((item) => item.id === 'editor'), true);
+    assert.equal(typeof roleListPayload.data.list[0].userCount, 'number');
+
+    const updateMenusResponse = await fetch(`${app.baseUrl}/api/system/roles/editor/menus`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        menuIds: ['dashboard', 'system-root', 'system-role'],
+      }),
+    });
+    const updateMenusPayload = await updateMenusResponse.json();
+
+    assert.equal(updateMenusResponse.status, 200);
+    assert.equal(updateMenusPayload.code, 200);
+
+    const infoResponse = await fetch(`${app.baseUrl}/api/user/info`, {
+      headers: {
+        Authorization: 'Bearer backend-token-editor',
+      },
+    });
+    const infoPayload = await infoResponse.json();
+
+    assert.equal(infoPayload.data.permissions.includes('system:role:view'), true);
+  } finally {
+    await app.close();
+    await app.cleanup();
+  }
+});
+
+test('system user endpoints support listing and role assignment', async () => {
+  const app = await startTestServer();
+
+  try {
+    const loginResponse = await fetch(`${app.baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: 'admin',
+        password: '123456',
+      }),
+    });
+    const loginPayload = await loginResponse.json();
+    const token = loginPayload.data.token;
+
+    const userListResponse = await fetch(`${app.baseUrl}/api/system/users`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const userListPayload = await userListResponse.json();
+
+    assert.equal(userListResponse.status, 200);
+    assert.equal(userListPayload.code, 200);
+    assert.equal(userListPayload.data.list.some((item) => item.username === 'editor'), true);
+    assert.equal(Array.isArray(userListPayload.data.list[0].roleNames), true);
+
+    const updateResponse = await fetch(`${app.baseUrl}/api/system/users/u-2`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        username: 'editor',
+        nickname: '运营管理员',
+        roleIds: ['admin'],
+        status: 1,
+        remark: '临时提升权限',
+      }),
+    });
+    const updatePayload = await updateResponse.json();
+
+    assert.equal(updateResponse.status, 200);
+    assert.equal(updatePayload.code, 200);
+
+    const infoResponse = await fetch(`${app.baseUrl}/api/user/info`, {
+      headers: {
+        Authorization: 'Bearer backend-token-editor',
+      },
+    });
+    const infoPayload = await infoResponse.json();
+
+    assert.equal(infoPayload.data.permissions.includes('system:menu:view'), true);
   } finally {
     await app.close();
     await app.cleanup();

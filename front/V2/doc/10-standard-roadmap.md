@@ -41,7 +41,16 @@ Standard 版本建议在 Base 之上重点补齐：
 - 操作日志
 - 更多全局设置能力
 
-## 4. 当前文档入口
+## 4. 当前完成状态
+
+- 已完成：系统管理入口。
+- 已完成：菜单管理树表格、CRUD 弹窗、mock/api 接口和后端 JSON 持久化。
+- 已完成：角色管理列表、新增、修改、删除、启停用、菜单权限分配、mock/api 接口和后端 JSON 持久化。
+- 已完成：用户管理列表、新增、修改、删除、启停用、重置密码、角色绑定、mock/api 接口和后端 JSON 持久化。
+- 已完成：真实账号、角色、菜单和按钮权限的第一阶段闭环验证。
+- 已完成：mock 模式下账号、用户、角色、菜单、登录态、用户信息和侧边栏菜单权限统一到运行态数据源，支持新增用户后登录、角色授权后刷新权限、菜单新增后参与权限过滤。
+
+## 5. 当前文档入口
 
 - `doc/plans/2026-04-27-v2-standard-design.md`
 - `doc/plans/2026-04-27-v2-standard-plan.md`
@@ -50,5 +59,9 @@ Standard 版本建议在 Base 之上重点补齐：
 - `doc/plans/2026-04-27-v2-standard-fullstack-plan.md`
 - `doc/plans/2026-04-27-v2-menu-management-design.md`
 - `doc/plans/2026-04-27-v2-menu-management-plan.md`
+- `doc/plans/2026-04-28-v2-role-management-design.md`
+- `doc/plans/2026-04-28-v2-role-management-plan.md`
+- `doc/plans/2026-04-28-v2-user-management-design.md`
+- `doc/plans/2026-04-28-v2-user-management-plan.md`
 - `doc/07-base-overview-and-usage.md`
 - `doc/08-backend-integration-contract.md`

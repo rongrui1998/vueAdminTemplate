@@ -1,4 +1,6 @@
 import type { UserInfo } from '@/types/user';
+import { systemRoleData } from '@/mock/data/system-role';
+import { systemUserData } from '@/mock/data/system-user';
 
 export interface MockAccount {
   username: string;
@@ -7,70 +9,56 @@ export interface MockAccount {
   userInfo: UserInfo;
 }
 
-export const mockAccounts: MockAccount[] = [
-  {
-    username: 'admin',
-    password: '123456',
-    token: 'mock-access-token-admin',
-    userInfo: {
-      id: 'u-1',
-      username: 'admin',
-      nickname: '系统管理员',
-      avatar: '',
-      roles: ['admin'],
-      permissions: [
-        'dashboard:view',
-        'demo:crud:view',
-        'demo:crud:create',
-        'demo:crud:edit',
-        'demo:crud:delete',
-        'demo:permission:view',
-        'demo:permission:create',
-        'demo:permission:export',
-        'demo:permission:approve',
-        'demo:permission:delete',
-        'demo:nested:view',
-        'demo:nested:extra:view',
-        'system:user:view',
-        'system:role:view',
-        'system:menu:view',
-        'system:menu:create',
-        'system:menu:edit',
-        'system:menu:delete',
-      ],
-    },
-  },
-  {
-    username: 'editor',
-    password: '123456',
-    token: 'mock-access-token-editor',
-    userInfo: {
-      id: 'u-2',
-      username: 'editor',
-      nickname: '运营编辑',
-      avatar: '',
-      roles: ['editor'],
-      permissions: [
-        'dashboard:view',
-        'demo:crud:view',
-        'demo:crud:edit',
-        'demo:permission:view',
-        'demo:permission:create',
-        'demo:permission:export',
-        'demo:nested:view',
-      ],
-    },
-  },
-];
+function buildMockUserInfo(user: (typeof systemUserData)[number]): UserInfo | null {
+  if (user.status !== 1) {
+    return null;
+  }
+
+  const roles = systemRoleData.filter(
+    (role) => role.status === 1 && user.roleIds.includes(role.id),
+  );
+
+  return {
+    id: user.id,
+    username: user.username,
+    nickname: user.nickname,
+    avatar: '',
+    roles: roles.map((role) => role.code),
+    permissions: [...new Set(roles.flatMap((role) => role.permissions))],
+  };
+}
+
+function buildMockAccount(user: (typeof systemUserData)[number]): MockAccount | null {
+  const userInfo = buildMockUserInfo(user);
+
+  if (!userInfo) {
+    return null;
+  }
+
+  return {
+    username: user.username,
+    password: user.password,
+    token: user.token,
+    userInfo,
+  };
+}
+
+export const mockAccounts: MockAccount[] = systemUserData
+  .map((user) => buildMockAccount(user))
+  .filter(Boolean) as MockAccount[];
 
 export function findMockAccount(username = '', password = '') {
-  return (
-    mockAccounts.find((item) => item.username === username && item.password === password) || null
+  const user = systemUserData.find(
+    (item) => item.username === username && item.password === password,
   );
+
+  return user ? buildMockAccount(user) : null;
 }
 
 export function getMockUserInfoByToken(token = '') {
-  return mockAccounts.find((item) => item.token === token)?.userInfo || null;
+  const user = systemUserData.find((item) => item.token === token);
+
+  return user ? buildMockUserInfo(user) : null;
 }
 
 export function getTokenFromHeaders(headers?: Record<string, unknown>) {

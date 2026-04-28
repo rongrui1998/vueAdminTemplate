@@ -2,6 +2,7 @@ import type { MockMethod } from 'vite-plugin-mock';
 import type { BackendMenuItem } from '@/types/menu';
 import type { SystemMenuPayload } from '@/types/system-menu';
 import { systemMenuData } from '@/mock/data/system-menu';
+import { systemRoleData } from '@/mock/data/system-role';
 
 function success<T>(data: T) {
   return {
@@ -20,7 +21,16 @@ function cloneMenuTree(list: BackendMenuItem[]): BackendMenuItem[] {
   }));
 }
 
-const systemMenuState = cloneMenuTree(systemMenuData);
+const mockGlobal = globalThis as typeof globalThis & {
+  __V2_MOCK_SYSTEM_MENU_STATE__?: BackendMenuItem[];
+};
+
+const systemMenuState = (mockGlobal.__V2_MOCK_SYSTEM_MENU_STATE__ ??=
+  cloneMenuTree(systemMenuData));
+
+export function getSystemMenuState() {
+  return systemMenuState;
+}
 
 function normalizePayload(data: Partial<SystemMenuPayload>) {
   const type = data.type || 'menu';
@@ -99,6 +109,7 @@ function insertMenuItem(payload: Partial<SystemMenuPayload>) {
 
   if (!normalized.parentId) {
     systemMenuState.push(nextItem);
+    grantMenuToAdmin(nextItem);
     return nextItem;
   }
 
@@ -111,7 +122,22 @@ function insertMenuItem(payload: Partial<SystemMenuPayload>) {
   parent.node.children = parent.node.children || [];
   parent.node.children.push(nextItem);
   parent.node.children.sort((prev, next) => (prev.sort || 0) - (next.sort || 0));
+  grantMenuToAdmin(nextItem);
   return nextItem;
+}
+
+function grantMenuToAdmin(item: BackendMenuItem) {
+  const adminRole = systemRoleData.find((role) => role.id === 'admin');
+
+  if (!adminRole) {
+    return;
+  }
+
+  adminRole.menuIds = [...new Set([...adminRole.menuIds, item.id])];
+
+  if (item.permission) {
+    adminRole.permissions = [...new Set([...adminRole.permissions, item.permission])];
+  }
 }
 
 function updateMenuItem(id: string, payload: Partial<SystemMenuPayload>) {

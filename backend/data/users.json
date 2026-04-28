@@ -6,7 +6,11 @@
     "nickname": "系统管理员",
     "avatar": "",
     "roleIds": ["admin"],
-    "token": "backend-token-admin"
+    "status": 1,
+    "token": "backend-token-admin",
+    "lastLoginAt": "2026-04-28 09:00:00",
+    "createdAt": "2026-04-27 10:00:00",
+    "remark": "内置管理员账号"
   },
   {
     "id": "u-2",
@@ -15,6 +19,10 @@
     "nickname": "运营编辑",
     "avatar": "",
     "roleIds": ["editor"],
-    "token": "backend-token-editor"
+    "status": 1,
+    "token": "backend-token-editor",
+    "lastLoginAt": "2026-04-28 09:10:00",
+    "createdAt": "2026-04-27 10:00:00",
+    "remark": "运营内容账号"
   }
 ]

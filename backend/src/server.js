@@ -8,6 +8,20 @@ import {
   getMenuListForRoleIds,
   updateSystemMenu,
 } from './services/menu.js';
+import {
+  createSystemRole,
+  deleteSystemRole,
+  getSystemRoles,
+  updateSystemRole,
+  updateSystemRoleMenus,
+} from './services/role.js';
+import {
+  createSystemUser,
+  deleteSystemUser,
+  getSystemUsers,
+  resetSystemUserPassword,
+  updateSystemUser,
+} from './services/user.js';
 
 function success(data) {
   return {
@@ -116,6 +130,76 @@ async function handleRequest(request, response) {
   if (request.method === 'DELETE' && url.pathname.startsWith('/api/system/menus/')) {
     const id = url.pathname.split('/').pop();
     await deleteSystemMenu(id);
+    sendJson(response, 200, success(true));
+    return;
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/system/roles') {
+    const list = await getSystemRoles(url.searchParams.get('keyword') || '');
+    sendJson(response, 200, success({ total: list.length, list }));
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/system/roles') {
+    await createSystemRole(await readBody(request));
+    sendJson(response, 200, success(true));
+    return;
+  }
+
+  if (request.method === 'PUT' && url.pathname.endsWith('/menus')) {
+    const parts = url.pathname.split('/').filter(Boolean);
+    const id = parts[parts.length - 2];
+    const body = await readBody(request);
+    await updateSystemRoleMenus(id, body.menuIds || []);
+    sendJson(response, 200, success(true));
+    return;
+  }
+
+  if (request.method === 'PUT' && url.pathname.startsWith('/api/system/roles/')) {
+    const id = url.pathname.split('/').pop();
+    await updateSystemRole(id, await readBody(request));
+    sendJson(response, 200, success(true));
+    return;
+  }
+
+  if (request.method === 'DELETE' && url.pathname.startsWith('/api/system/roles/')) {
+    const id = url.pathname.split('/').pop();
+    await deleteSystemRole(id);
+    sendJson(response, 200, success(true));
+    return;
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/system/users') {
+    const list = await getSystemUsers(url.searchParams.get('keyword') || '');
+    sendJson(response, 200, success({ total: list.length, list }));
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/system/users') {
+    await createSystemUser(await readBody(request));
+    sendJson(response, 200, success(true));
+    return;
+  }
+
+  if (request.method === 'PUT' && url.pathname.endsWith('/password')) {
+    const parts = url.pathname.split('/').filter(Boolean);
+    const id = parts[parts.length - 2];
+    const body = await readBody(request);
+    await resetSystemUserPassword(id, body.password || '123456');
+    sendJson(response, 200, success(true));
+    return;
+  }
+
+  if (request.method === 'PUT' && url.pathname.startsWith('/api/system/users/')) {
+    const id = url.pathname.split('/').pop();
+    await updateSystemUser(id, await readBody(request));
+    sendJson(response, 200, success(true));
+    return;
+  }
+
+  if (request.method === 'DELETE' && url.pathname.startsWith('/api/system/users/')) {
+    const id = url.pathname.split('/').pop();
+    await deleteSystemUser(id);
     sendJson(response, 200, success(true));
     return;
   }

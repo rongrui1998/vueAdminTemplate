@@ -90,4 +90,44 @@ describe('dynamic routes', () => {
       'route_system-role',
     ]);
   });
+
+  it('normalizes absolute child menu paths into relative route segments', () => {
+    const menus: BackendMenuItem[] = [
+      {
+        id: 'system-root',
+        parentId: null,
+        name: '系统管理',
+        path: '/system',
+        component: 'ParentView',
+        type: 'directory',
+        children: [
+          {
+            id: 'system-user',
+            parentId: 'system-root',
+            name: '用户管理',
+            path: '/system/user',
+            component: 'system/user/index',
+            type: 'menu',
+            permission: 'system:user:view',
+            children: [],
+          },
+          {
+            id: 'system-role',
+            parentId: 'system-root',
+            name: '角色管理',
+            path: '/system/role',
+            component: 'system/role/index',
+            type: 'menu',
+            permission: 'system:role:view',
+            children: [],
+          },
+        ],
+      },
+    ];
+
+    const routes = generateDynamicRoutes(normalizeMenuTree(menus));
+
+    expect(routes[0]?.path).toBe('system');
+    expect(routes[0]?.children?.map((item) => item.path)).toEqual(['user', 'role']);
+  });
 });

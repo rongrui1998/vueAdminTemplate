@@ -1,7 +1,7 @@
 import type { MockMethod } from 'vite-plugin-mock';
 import { getMockUserInfoByToken, getTokenFromHeaders } from '@/mock/data/auth';
-import { menuData } from '@/mock/data/menus';
 import type { BackendMenuItem } from '@/types/menu';
+import { getSystemMenuState } from './system-menu';
 
 function success<T>(data: T) {
   return {
@@ -19,12 +19,15 @@ function filterMenusByPermissions(
   isAdmin: boolean,
 ): BackendMenuItem[] {
   return menus.reduce<BackendMenuItem[]>((result, item) => {
+    if (item.status === 0) {
+      return result;
+    }
+
     const children = item.children?.length
       ? filterMenusByPermissions(item.children, permissions, isAdmin)
       : [];
     const hasPermission = !item.permission || isAdmin || permissions.includes(item.permission);
     const isDirectory = item.type === 'directory';
-    const visibleChildren = children.filter((child) => !child.hidden && child.type !== 'button');
 
     if (item.type === 'button' && !hasPermission) {
       return result;
@@ -37,15 +40,17 @@ function filterMenusByPermissions(
 
       result.push({
         ...item,
-        hidden: item.hidden || visibleChildren.length === 0,
         children,
       });
       return result;
     }
 
+    if (!hasPermission) {
+      return result;
+    }
+
     result.push({
       ...item,
-      hidden: item.hidden || !hasPermission,
       children,
     });
     return result;
@@ -70,7 +75,7 @@ export default [
       }
 
       const filteredMenus = filterMenusByPermissions(
-        menuData,
+        getSystemMenuState(),
         userInfo.permissions,
         userInfo.roles.includes('admin'),
       );

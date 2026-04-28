@@ -1,118 +1,289 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { ElMessage } from 'element-plus';
+import { Plus, RefreshRight } from '@element-plus/icons-vue';
+import { getSystemMenusApi } from '@/api/system-menu';
+import {
+  createSystemRoleApi,
+  deleteSystemRoleApi,
+  getSystemRolesApi,
+  updateSystemRoleApi,
+  updateSystemRoleMenusApi,
+} from '@/api/system-role';
 import PageContainer from '@/components/PageContainer/index.vue';
-import { getStandardDataSourceLabel } from '@/constants/standard';
+import { usePermission } from '@/composables/usePermission';
+import { getStandardDataSourceLabel, isStandardApiMode } from '@/constants/standard';
+import type { BackendMenuItem } from '@/types/menu';
+import type { SystemRolePayload, SystemRoleRecord } from '@/types/system-role';
+import RoleFormDialog from './components/RoleFormDialog.vue';
+import RolePermissionDialog from './components/RolePermissionDialog.vue';
 
 const dataSourceLabel = computed(() => getStandardDataSourceLabel());
+const sourceStatus = computed(() => (isStandardApiMode() ? '接口联调中' : 'Mock 先行中'));
+const { hasPermission } = usePermission();
+const pageStatus = ref<'loading' | 'error' | 'success'>('loading');
+const errorText = ref('');
+const tableData = ref<SystemRoleRecord[]>([]);
+const menuTree = ref<BackendMenuItem[]>([]);
+const formVisible = ref(false);
+const permissionVisible = ref(false);
+const currentRecord = ref<SystemRoleRecord | null>(null);
+const submitLoading = ref(false);
+const permissionLoading = ref(false);
 
-const rolePoints = [
-  '角色将作为菜单权限、按钮权限和页面访问控制的核心配置入口',
-  '后续页面会支持角色启停、权限树配置和账号绑定数量展示',
-  '切到真实接口后，这里会直接影响前端的菜单可见性和 403 判定',
-];
+async function loadRoles() {
+  pageStatus.value = 'loading';
+  errorText.value = '';
+
+  try {
+    const result = await getSystemRolesApi();
+    tableData.value = result.list;
+    pageStatus.value = 'success';
+  } catch (error) {
+    tableData.value = [];
+    pageStatus.value = 'error';
+    errorText.value = error instanceof Error ? error.message : '加载角色数据失败';
+  }
+}
+
+async function ensureMenuTreeLoaded() {
+  if (menuTree.value.length) {
+    return;
+  }
+
+  const result = await getSystemMenusApi();
+  menuTree.value = result.list;
+}
+
+function openCreateDialog() {
+  currentRecord.value = null;
+  formVisible.value = true;
+}
+
+function openEditDialog(row: SystemRoleRecord) {
+  currentRecord.value = row;
+  formVisible.value = true;
+}
+
+async function openPermissionDialog(row: SystemRoleRecord) {
+  currentRecord.value = row;
+  await ensureMenuTreeLoaded();
+  permissionVisible.value = true;
+}
+
+async function handleSubmit(payload: SystemRolePayload) {
+  submitLoading.value = true;
+
+  try {
+    if (currentRecord.value) {
+      await updateSystemRoleApi(currentRecord.value.id, payload);
+      ElMessage.success('角色修改成功');
+    } else {
+      await createSystemRoleApi(payload);
+      ElMessage.success('角色新增成功');
+    }
+
+    formVisible.value = false;
+    await loadRoles();
+  } finally {
+    submitLoading.value = false;
+  }
+}
+
+async function handleDelete(row: SystemRoleRecord) {
+  const confirmed = window.confirm(`确认删除“${row.name}”吗？`);
+
+  if (!confirmed) {
+    return;
+  }
+
+  await deleteSystemRoleApi(row.id);
+  ElMessage.success('角色删除成功');
+  await loadRoles();
+}
+
+async function handleStatusChange(row: SystemRoleRecord, value: number | string | boolean) {
+  await updateSystemRoleApi(row.id, {
+    code: row.code,
+    name: row.name,
+    sort: row.sort,
+    status: Number(value),
+    remark: row.remark || '',
+  });
+
+  ElMessage.success(`已${Number(value) === 1 ? '启用' : '停用'}角色`);
+  await loadRoles();
+}
+
+async function handlePermissionSubmit(menuIds: string[]) {
+  if (!currentRecord.value) {
+    return;
+  }
+
+  permissionLoading.value = true;
+
+  try {
+    await updateSystemRoleMenusApi(currentRecord.value.id, { menuIds });
+    ElMessage.success('角色权限保存成功');
+    permissionVisible.value = false;
+    await loadRoles();
+  } finally {
+    permissionLoading.value = false;
+  }
+}
+
+onMounted(() => {
+  loadRoles();
+});
 </script>
 
 <template>
   <PageContainer title="角色管理">
+    <template #extra>
+      <div class="role-page__toolbar">
+        <el-button
+          type="primary"
+          :icon="Plus"
+          :disabled="!hasPermission('system:role:create')"
+          @click="openCreateDialog"
+        >
+          新增角色
+        </el-button>
+        <el-button circle :icon="RefreshRight" @click="loadRoles" />
+      </div>
+    </template>
+
+    <el-alert type="info" :closable="false" class="role-page__alert">
+      <template #title>
+        当前数据源：{{ dataSourceLabel }}，{{ sourceStatus }}。角色管理已支持 mock / api
+        双模式列表、维护与菜单权限分配。
+      </template>
+    </el-alert>
+
     <el-card shadow="never">
-      <template #header>
-        <div class="system-page__header">
-          <span>角色与权限闭环</span>
-          <el-tag effect="light">当前数据源：{{ dataSourceLabel }}</el-tag>
+      <template v-if="pageStatus === 'error'">
+        <div class="role-page__state">
+          <el-result icon="error" title="角色加载失败" :sub-title="errorText || '请稍后重试'">
+            <template #extra>
+              <el-button type="primary" @click="loadRoles">重新加载</el-button>
+            </template>
+          </el-result>
         </div>
       </template>
 
-      <div class="role-page">
-        <div class="role-page__summary">
-          <div class="role-page__number">03</div>
-          <div>
-            <div class="role-page__title">角色管理是 V2 Standard 的权限中枢</div>
-            <div class="role-page__desc">
-              这块会承接菜单管理和用户管理之间的关系，把“账号看到什么、能操作什么”从演示页能力升级成真实管理能力。
-            </div>
-          </div>
-        </div>
+      <template v-else>
+        <el-table v-loading="pageStatus === 'loading'" :data="tableData" row-key="id">
+          <el-table-column label="角色名称" min-width="160">
+            <template #default="{ row }">
+              <div class="role-page__name">
+                <span>{{ row.name }}</span>
+                <el-tag v-if="row.id === 'admin'" size="small" effect="plain">内置</el-tag>
+              </div>
+            </template>
+          </el-table-column>
 
-        <div class="role-page__grid">
-          <div v-for="item in rolePoints" :key="item" class="role-page__point">
-            {{ item }}
-          </div>
-        </div>
-      </div>
+          <el-table-column label="角色编码" prop="code" min-width="140" />
+
+          <el-table-column label="排序" prop="sort" width="90" align="center" />
+
+          <el-table-column label="状态" width="120" align="center">
+            <template #default="{ row }">
+              <el-switch
+                :model-value="row.status"
+                :active-value="1"
+                :inactive-value="0"
+                :disabled="row.id === 'admin' || !hasPermission('system:role:edit')"
+                @change="(value: string | number | boolean) => handleStatusChange(row, value)"
+              />
+            </template>
+          </el-table-column>
+
+          <el-table-column label="权限数量" width="110" align="center">
+            <template #default="{ row }">
+              <el-tag effect="light">{{ row.permissions.length }}</el-tag>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="关联用户" width="110" align="center">
+            <template #default="{ row }">
+              <span>{{ row.userCount }}</span>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="创建时间" prop="createdAt" min-width="180" />
+
+          <el-table-column label="操作" width="270" fixed="right">
+            <template #default="{ row }">
+              <div class="role-page__actions">
+                <el-button
+                  text
+                  type="primary"
+                  :disabled="!hasPermission('system:role:auth')"
+                  @click="openPermissionDialog(row)"
+                >
+                  分配权限
+                </el-button>
+                <el-button
+                  text
+                  type="primary"
+                  :disabled="!hasPermission('system:role:edit')"
+                  @click="openEditDialog(row)"
+                >
+                  修改
+                </el-button>
+                <el-button
+                  text
+                  type="danger"
+                  :disabled="row.id === 'admin' || !hasPermission('system:role:delete')"
+                  @click="handleDelete(row)"
+                >
+                  删除
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </template>
     </el-card>
+
+    <RoleFormDialog
+      :visible="formVisible"
+      :record="currentRecord"
+      :submitting="submitLoading"
+      @submit="handleSubmit"
+      @update:visible="formVisible = $event"
+    />
+
+    <RolePermissionDialog
+      :visible="permissionVisible"
+      :record="currentRecord"
+      :menu-tree="menuTree"
+      :submitting="permissionLoading"
+      @submit="handlePermissionSubmit"
+      @update:visible="permissionVisible = $event"
+    />
   </PageContainer>
 </template>
 
 <style scoped>
-.system-page__header {
+.role-page__toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 16px;
-  font-weight: 600;
+  gap: 10px;
 }
 
-.role-page {
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
+.role-page__alert {
+  margin-bottom: 16px;
 }
 
-.role-page__summary {
+.role-page__state {
+  padding: 24px 0;
+}
+
+.role-page__name,
+.role-page__actions {
   display: flex;
   align-items: center;
-  gap: 20px;
-  padding: 24px;
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 18px;
-  background:
-    radial-gradient(circle at left top, rgb(80 190 140 / 0.1), transparent 20%),
-    var(--el-fill-color-blank);
-}
-
-.role-page__number {
-  font-size: 42px;
-  font-weight: 800;
-  color: var(--el-color-success);
-  line-height: 1;
-}
-
-.role-page__title {
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.role-page__desc {
-  margin-top: 10px;
-  color: var(--el-text-color-secondary);
-  line-height: 1.8;
-}
-
-.role-page__grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.role-page__point {
-  min-height: 126px;
-  padding: 18px;
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 16px;
-  background: var(--el-fill-color-blank);
-  color: var(--el-text-color-regular);
-  line-height: 1.75;
-}
-
-@media (max-width: 960px) {
-  .role-page__summary {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .role-page__grid {
-    grid-template-columns: 1fr;
-  }
+  gap: 8px;
 }
 </style>
