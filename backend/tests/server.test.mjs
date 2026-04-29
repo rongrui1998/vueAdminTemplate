@@ -440,6 +440,115 @@ test('dashboard statistics endpoint returns summary cards', async () => {
   }
 });
 
+test('device endpoints support listing, create, update, status, and delete', async () => {
+  const app = await startTestServer();
+
+  try {
+    const loginResponse = await fetch(`${app.baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: 'admin',
+        password: '123456',
+      }),
+    });
+    const loginPayload = await loginResponse.json();
+    const token = loginPayload.data.token;
+
+    const listResponse = await fetch(`${app.baseUrl}/api/device/list`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        pageNum: 1,
+        pageSize: 2,
+        keyword: '摄像头',
+      }),
+    });
+    const listPayload = await listResponse.json();
+
+    assert.equal(listResponse.status, 200);
+    assert.equal(listPayload.code, 200);
+    assert.equal(listPayload.data.list.length, 2);
+    assert.ok(listPayload.data.total >= 2);
+
+    const createResponse = await fetch(`${app.baseUrl}/api/device/add`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        deviceId: 'DV-20001',
+        deviceName: '测试设备',
+        deviceType: '摄像头',
+      }),
+    });
+    const createPayload = await createResponse.json();
+
+    assert.equal(createResponse.status, 200);
+    assert.equal(createPayload.code, 200);
+    assert.equal(createPayload.data.deviceId, 'DV-20001');
+
+    const updateResponse = await fetch(`${app.baseUrl}/api/device/update`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        id: createPayload.data.id,
+        deviceName: '测试设备更新',
+        deviceType: '录像机',
+      }),
+    });
+    const updatePayload = await updateResponse.json();
+
+    assert.equal(updateResponse.status, 200);
+    assert.equal(updatePayload.code, 200);
+    assert.equal(updatePayload.data.deviceType, '录像机');
+
+    const statusResponse = await fetch(`${app.baseUrl}/api/device/status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        id: createPayload.data.id,
+        status: 0,
+      }),
+    });
+    const statusPayload = await statusResponse.json();
+
+    assert.equal(statusResponse.status, 200);
+    assert.equal(statusPayload.code, 200);
+    assert.equal(statusPayload.data.status, 0);
+
+    const deleteResponse = await fetch(
+      `${app.baseUrl}/api/device/delete?id=${createPayload.data.id}`,
+      {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+    const deletePayload = await deleteResponse.json();
+
+    assert.equal(deleteResponse.status, 200);
+    assert.equal(deletePayload.code, 200);
+    assert.equal(deletePayload.data, true);
+  } finally {
+    await app.close();
+    await app.cleanup();
+  }
+});
+
 test('demo user endpoints support CRUD and pagination', async () => {
   const app = await startTestServer();
 

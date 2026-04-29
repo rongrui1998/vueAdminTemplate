@@ -34,6 +34,13 @@ import {
   getBusinessTemplates,
   updateBusinessTemplate,
 } from './services/businessTemplate.js';
+import {
+  createDevice,
+  deleteDevice,
+  getDeviceList,
+  updateDevice,
+  updateDeviceStatus,
+} from './services/device.js';
 import { getDashboardStatistics } from './services/dashboard.js';
 import {
   createDemoUser,
@@ -130,6 +137,33 @@ async function handleRequest(request, response) {
 
   if (request.method === 'GET' && url.pathname === '/api/dashboard/statistics') {
     sendJson(response, 200, success(await getDashboardStatistics()));
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/device/list') {
+    sendJson(response, 200, success(await getDeviceList(await readBody(request))));
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/device/add') {
+    sendJson(response, 200, success(await createDevice(await readBody(request))));
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/device/update') {
+    const body = await readBody(request);
+    sendJson(response, 200, success(await updateDevice(body.id, body)));
+    return;
+  }
+
+  if (request.method === 'DELETE' && url.pathname === '/api/device/delete') {
+    sendJson(response, 200, success(await deleteDevice(url.searchParams.get('id') || '')));
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/device/status') {
+    const body = await readBody(request);
+    sendJson(response, 200, success(await updateDeviceStatus(body.id, body)));
     return;
   }
 

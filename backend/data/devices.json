@@ -1,0 +1,68 @@
+[
+  {
+    "id": "dev-1",
+    "deviceId": "DV-10001",
+    "deviceName": "前门摄像头",
+    "deviceType": "摄像头",
+    "status": 1,
+    "createdAt": "2026-04-18 09:12:00",
+    "updatedAt": "2026-04-28 15:04:00",
+    "createdBy": "admin",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "dev-2",
+    "deviceId": "DV-10002",
+    "deviceName": "仓库录像机",
+    "deviceType": "录像机",
+    "status": 1,
+    "createdAt": "2026-04-19 10:20:00",
+    "updatedAt": "2026-04-28 15:04:00",
+    "createdBy": "admin",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "dev-3",
+    "deviceId": "DV-10003",
+    "deviceName": "大厅球机",
+    "deviceType": "球机",
+    "status": 0,
+    "createdAt": "2026-04-20 11:30:00",
+    "updatedAt": "2026-04-27 09:40:00",
+    "createdBy": "admin",
+    "updatedBy": "system"
+  },
+  {
+    "id": "dev-4",
+    "deviceId": "DV-10004",
+    "deviceName": "停车场摄像头",
+    "deviceType": "摄像头",
+    "status": 1,
+    "createdAt": "2026-04-21 14:05:00",
+    "updatedAt": "2026-04-28 15:04:00",
+    "createdBy": "admin",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "dev-5",
+    "deviceId": "DV-10005",
+    "deviceName": "机房监控主机",
+    "deviceType": "主机",
+    "status": 1,
+    "createdAt": "2026-04-22 16:18:00",
+    "updatedAt": "2026-04-28 15:04:00",
+    "createdBy": "admin",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "dev-6",
+    "deviceId": "DV-10006",
+    "deviceName": "会议室摄像头",
+    "deviceType": "摄像头",
+    "status": 0,
+    "createdAt": "2026-04-23 08:50:00",
+    "updatedAt": "2026-04-27 09:40:00",
+    "createdBy": "admin",
+    "updatedBy": "system"
+  }
+]
