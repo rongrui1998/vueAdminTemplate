@@ -17,6 +17,7 @@ import { usePermission } from '@/composables/usePermission';
 import { getStandardDataSourceLabel, isStandardApiMode } from '@/constants/standard';
 import type { BackendMenuItem } from '@/types/menu';
 import type { SystemRolePayload, SystemRoleRecord } from '@/types/system-role';
+import { confirmDelete } from '@/utils/confirm';
 import RoleFormDialog from './components/RoleFormDialog.vue';
 import RolePermissionDialog from './components/RolePermissionDialog.vue';
 
@@ -114,7 +115,7 @@ async function handleSubmit(payload: SystemRolePayload) {
 }
 
 async function handleDelete(row: SystemRoleRecord) {
-  const confirmed = window.confirm(`确认删除“${row.name}”吗？`);
+  const confirmed = await confirmDelete(`确认删除“${row.name}”吗？`);
 
   if (!confirmed) {
     return;

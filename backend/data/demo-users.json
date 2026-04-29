@@ -1,0 +1,83 @@
+[
+  {
+    "id": "1777455332531",
+    "name": "荣睿",
+    "email": "rongrui1998@gmail.com",
+    "role": "客服",
+    "department": "客服部门",
+    "status": 1,
+    "createdAt": "2026-04-29 09:35:32"
+  },
+  {
+    "id": "1",
+    "name": "张晨",
+    "email": "zhangchen@example.com",
+    "role": "产品经理",
+    "department": "产品中心",
+    "status": 1,
+    "createdAt": "2026-04-18 09:20:00"
+  },
+  {
+    "id": "2",
+    "name": "李楠",
+    "email": "linan@example.com",
+    "role": "前端开发",
+    "department": "研发中心",
+    "status": 1,
+    "createdAt": "2026-04-19 10:10:00"
+  },
+  {
+    "id": "3",
+    "name": "王雪",
+    "email": "wangxue@example.com",
+    "role": "测试工程师",
+    "department": "质量中心",
+    "status": 0,
+    "createdAt": "2026-04-20 14:32:00"
+  },
+  {
+    "id": "4",
+    "name": "赵宁",
+    "email": "zhaoning@example.com",
+    "role": "运营专员",
+    "department": "运营中心",
+    "status": 1,
+    "createdAt": "2026-04-21 16:15:00"
+  },
+  {
+    "id": "5",
+    "name": "陈露",
+    "email": "chenlu@example.com",
+    "role": "后端开发",
+    "department": "研发中心",
+    "status": 1,
+    "createdAt": "2026-04-22 11:28:00"
+  },
+  {
+    "id": "6",
+    "name": "刘杰",
+    "email": "liujie@example.com",
+    "role": "UI 设计师",
+    "department": "设计中心",
+    "status": 0,
+    "createdAt": "2026-04-23 17:45:00"
+  },
+  {
+    "id": "7",
+    "name": "孙琪",
+    "email": "sunqi@example.com",
+    "role": "客户成功",
+    "department": "客户服务部",
+    "status": 1,
+    "createdAt": "2026-04-24 08:56:00"
+  },
+  {
+    "id": "8",
+    "name": "周航",
+    "email": "zhouhang@example.com",
+    "role": "数据分析师",
+    "department": "数据中心",
+    "status": 1,
+    "createdAt": "2026-04-25 13:02:00"
+  }
+]

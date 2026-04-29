@@ -1,0 +1,31 @@
+import type { BusinessTemplateRecord } from '@/types/business-template';
+
+export const businessTemplateData: BusinessTemplateRecord[] = [
+  {
+    id: 'tpl-1',
+    name: '客户资料维护',
+    owner: '业务中台',
+    scene: '基础资料',
+    status: 1,
+    updatedAt: '2026-04-29 09:30:00',
+    remark: '适合客户、供应商、项目档案等列表页复制使用',
+  },
+  {
+    id: 'tpl-2',
+    name: '审批配置列表',
+    owner: '流程平台',
+    scene: '流程配置',
+    status: 1,
+    updatedAt: '2026-04-29 10:12:00',
+    remark: '演示状态切换、详情抽屉和行操作布局',
+  },
+  {
+    id: 'tpl-3',
+    name: '归档数据样例',
+    owner: '数据治理',
+    scene: '历史数据',
+    status: 0,
+    updatedAt: '2026-04-28 17:45:00',
+    remark: '用于展示禁用状态和空/筛选反馈',
+  },
+];

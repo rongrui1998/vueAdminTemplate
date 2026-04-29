@@ -17,6 +17,7 @@ import { usePermission } from '@/composables/usePermission';
 import { getStandardDataSourceLabel, isStandardApiMode } from '@/constants/standard';
 import type { SystemRoleRecord } from '@/types/system-role';
 import type { SystemUserPayload, SystemUserRecord } from '@/types/system-user';
+import { confirmAction, confirmDelete } from '@/utils/confirm';
 import UserFormDialog from './components/UserFormDialog.vue';
 
 const dataSourceLabel = computed(() => getStandardDataSourceLabel());
@@ -120,7 +121,11 @@ async function handleStatusChange(row: SystemUserRecord, value: number | string 
 }
 
 async function handleResetPassword(row: SystemUserRecord) {
-  const confirmed = window.confirm(`确认将“${row.nickname}”的密码重置为 123456 吗？`);
+  const confirmed = await confirmAction({
+    title: '重置密码',
+    message: `确认将“${row.nickname}”的密码重置为 123456 吗？`,
+    confirmButtonText: '确认重置',
+  });
 
   if (!confirmed) {
     return;
@@ -131,7 +136,7 @@ async function handleResetPassword(row: SystemUserRecord) {
 }
 
 async function handleDelete(row: SystemUserRecord) {
-  const confirmed = window.confirm(`确认删除“${row.nickname}”吗？`);
+  const confirmed = await confirmDelete(`确认删除“${row.nickname}”吗？`);
 
   if (!confirmed) {
     return;

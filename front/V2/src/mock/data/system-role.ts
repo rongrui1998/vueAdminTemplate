@@ -32,6 +32,7 @@ const initialSystemRoleData: SystemRoleRecord[] = [
       'demo-components-modal-form',
       'demo-components-drawer-form',
       'demo-import-export',
+      'demo-business-template',
     ],
     permissions: [
       'dashboard:view',
@@ -55,6 +56,7 @@ const initialSystemRoleData: SystemRoleRecord[] = [
       'demo:components:modal-form:view',
       'demo:components:drawer-form:view',
       'demo:import-export:view',
+      'demo:business-template:view',
     ],
     userCount: 1,
     createdAt: '2026-04-27 10:00:00',

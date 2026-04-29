@@ -23,12 +23,16 @@ export default defineConfig(({ command, mode }) => {
           }),
         ],
       }),
-      viteMockServe({
-        mockPath: 'src/mock/modules',
-        localEnabled: command === 'serve' && useMock,
-        prodEnabled: false,
-        supportTs: true,
-      }),
+      ...(command === 'serve' && useMock
+        ? [
+            viteMockServe({
+              mockPath: 'src/mock/modules',
+              localEnabled: true,
+              prodEnabled: false,
+              supportTs: true,
+            }),
+          ]
+        : []),
     ],
     resolve: {
       alias: {

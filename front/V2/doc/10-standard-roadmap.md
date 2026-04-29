@@ -50,7 +50,11 @@ Standard 版本建议在 Base 之上重点补齐：
 - 已完成：真实账号、角色、菜单和按钮权限的第一阶段闭环验证。
 - 已完成：mock 模式下账号、用户、角色、菜单、登录态、用户信息和侧边栏菜单权限统一到运行态数据源，支持新增用户后登录、角色授权后刷新权限、菜单新增后参与权限过滤。
 - 已完成：通用业务组件第一阶段，已补 `SearchForm`、`ProTable`、`ModalForm`、`DrawerForm` 基础封装，并完成独立组件示例页，使用者可以选择原生 Element Plus 写法或模板封装写法。
-- 已完成：上传、CSV 导入预览、CSV 导出下载的前端轻量示例。
+- 已完成：CSV 导入预览、确认导入、CSV 导出下载的 mock/API 后端闭环示例。
+- 已完成：标准业务页面模板示例，组合查询、表格、弹窗、抽屉、状态切换和行操作布局。
+- 已完成：右侧固定设置抽屉，支持主题、布局密度、标签栏和页面缓存等本地偏好配置。
+- 已完成：Dashboard 快捷入口、系统状态和版本模式信息增强。
+- 已完成：`404` 与动态路由缺失页视觉和引导文案统一增强。
 - 进行中：操作日志等 Standard 增强能力。
 
 ## 5. 当前文档入口
@@ -67,5 +71,10 @@ Standard 版本建议在 Base 之上重点补齐：
 - `doc/plans/2026-04-28-v2-user-management-design.md`
 - `doc/plans/2026-04-28-v2-user-management-plan.md`
 - `doc/plans/2026-04-28-v2-component-showcase-plan.md`
+- `doc/plans/2026-04-29-v2-import-export-backend-design.md`
+- `doc/plans/2026-04-29-v2-import-export-backend-plan.md`
+- `doc/plans/2026-04-29-v2-standard-polish-plan.md`
 - `doc/07-base-overview-and-usage.md`
 - `doc/08-backend-integration-contract.md`
+- `doc/11-standard-usage-guide.md`
+- `doc/12-standard-demo-checklist.md`

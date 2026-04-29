@@ -1,4 +1,4 @@
-import type { ThemeMode } from '@/constants/app';
+import type { LayoutDensity, ThemeMode } from '@/constants/app';
 
 export interface TabViewItem {
   title: string;
@@ -18,6 +18,10 @@ export interface PersistedTabsState {
 export interface AppSettingsState {
   sidebarCollapsed: boolean;
   themeMode: ThemeMode;
+  layoutDensity: LayoutDensity;
+  tagViewsVisible: boolean;
+  keepAliveEnabled: boolean;
+  settingsDrawerVisible: boolean;
   layoutReady: boolean;
   sidebarAutoCollapsed: boolean;
 }

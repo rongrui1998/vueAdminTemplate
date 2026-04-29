@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
-import { ElMessage } from 'element-plus/es/components/message/index.mjs';
-import { ElMessageBox } from 'element-plus/es/components/message-box/index.mjs';
+import { ElMessage } from 'element-plus';
 import PageContainer from '@/components/PageContainer/index.vue';
 import {
   createDemoUserApi,
@@ -12,6 +11,7 @@ import {
 } from '@/api/demo';
 import { usePermission } from '@/composables/usePermission';
 import type { DemoUserForm, DemoUserItem } from '@/types/demo';
+import { confirmDelete } from '@/utils/confirm';
 import DemoDetailDrawer from '@/views/demo/crud/components/DemoDetailDrawer.vue';
 import DemoFormDialog from '@/views/demo/crud/components/DemoFormDialog.vue';
 
@@ -116,11 +116,9 @@ async function handleDelete(row: DemoUserItem) {
     return;
   }
 
-  try {
-    await ElMessageBox.confirm(`确认删除账号「${row.name}」吗？`, '提示', {
-      type: 'warning',
-    });
-  } catch {
+  const confirmed = await confirmDelete(`确认删除账号「${row.name}」吗？`);
+
+  if (!confirmed) {
     return;
   }
 

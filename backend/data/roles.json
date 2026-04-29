@@ -26,7 +26,8 @@
       "demo:components:pro-table:view",
       "demo:components:modal-form:view",
       "demo:components:drawer-form:view",
-      "demo:import-export:view"
+      "demo:import-export:view",
+      "demo:business-template:view"
     ],
     "menuIds": [
       "dashboard",
@@ -52,7 +53,8 @@
       "demo-components-pro-table",
       "demo-components-modal-form",
       "demo-components-drawer-form",
-      "demo-import-export"
+      "demo-import-export",
+      "demo-business-template"
     ],
     "createdAt": "2026-04-27 10:00:00",
     "remark": "拥有系统全部管理权限"
@@ -74,5 +76,23 @@
     ],
     "createdAt": "2026-04-27 10:00:00",
     "remark": "负责运营内容维护"
+  },
+  {
+    "id": "customer",
+    "code": "customer",
+    "name": "客服",
+    "sort": 3,
+    "status": 1,
+    "remark": "客服角色",
+    "menuIds": [
+      "dashboard",
+      "demo-business-template",
+      "demo-root"
+    ],
+    "permissions": [
+      "dashboard:view",
+      "demo:business-template:view"
+    ],
+    "createdAt": "2026-04-29 07:53:58"
   }
 ]

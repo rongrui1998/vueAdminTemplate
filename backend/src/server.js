@@ -22,6 +22,26 @@ import {
   resetSystemUserPassword,
   updateSystemUser,
 } from './services/user.js';
+import {
+  confirmImportExportRows,
+  exportImportExportCsv,
+  previewImportExportCsv,
+} from './services/importExport.js';
+import {
+  createBusinessTemplate,
+  deleteBusinessTemplate,
+  getBusinessTemplateDetail,
+  getBusinessTemplates,
+  updateBusinessTemplate,
+} from './services/businessTemplate.js';
+import { getDashboardStatistics } from './services/dashboard.js';
+import {
+  createDemoUser,
+  deleteDemoUser,
+  getDemoUserDetail,
+  getDemoUsers,
+  updateDemoUser,
+} from './services/demoUser.js';
 
 function success(data) {
   return {
@@ -108,6 +128,82 @@ async function handleRequest(request, response) {
     return;
   }
 
+  if (request.method === 'GET' && url.pathname === '/api/dashboard/statistics') {
+    sendJson(response, 200, success(await getDashboardStatistics()));
+    return;
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/demo/users') {
+    sendJson(
+      response,
+      200,
+      success(
+        await getDemoUsers({
+          pageNum: url.searchParams.get('pageNum') || '1',
+          pageSize: url.searchParams.get('pageSize') || '10',
+          keyword: url.searchParams.get('keyword') || '',
+          status: url.searchParams.get('status') || '',
+        }),
+      ),
+    );
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/demo/users') {
+    sendJson(response, 200, success(await createDemoUser(await readBody(request))));
+    return;
+  }
+
+  if (request.method === 'GET' && url.pathname.startsWith('/api/demo/users/')) {
+    const id = url.pathname.split('/').pop();
+    sendJson(response, 200, success(await getDemoUserDetail(id)));
+    return;
+  }
+
+  if (request.method === 'PUT' && url.pathname.startsWith('/api/demo/users/')) {
+    const id = url.pathname.split('/').pop();
+    sendJson(response, 200, success(await updateDemoUser(id, await readBody(request))));
+    return;
+  }
+
+  if (request.method === 'DELETE' && url.pathname.startsWith('/api/demo/users/')) {
+    const id = url.pathname.split('/').pop();
+    sendJson(response, 200, success(await deleteDemoUser(id)));
+    return;
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/demo/business-templates') {
+    const list = await getBusinessTemplates({
+      keyword: url.searchParams.get('keyword') || '',
+      status: url.searchParams.get('status') || '',
+    });
+    sendJson(response, 200, success({ total: list.length, list }));
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/demo/business-templates') {
+    sendJson(response, 200, success(await createBusinessTemplate(await readBody(request))));
+    return;
+  }
+
+  if (request.method === 'GET' && url.pathname.startsWith('/api/demo/business-templates/')) {
+    const id = url.pathname.split('/').pop();
+    sendJson(response, 200, success(await getBusinessTemplateDetail(id)));
+    return;
+  }
+
+  if (request.method === 'PUT' && url.pathname.startsWith('/api/demo/business-templates/')) {
+    const id = url.pathname.split('/').pop();
+    sendJson(response, 200, success(await updateBusinessTemplate(id, await readBody(request))));
+    return;
+  }
+
+  if (request.method === 'DELETE' && url.pathname.startsWith('/api/demo/business-templates/')) {
+    const id = url.pathname.split('/').pop();
+    sendJson(response, 200, success(await deleteBusinessTemplate(id)));
+    return;
+  }
+
   if (request.method === 'GET' && url.pathname === '/api/system/menus') {
     const list = await getAllSystemMenus();
     sendJson(response, 200, success({ total: list.length, list }));
@@ -172,6 +268,23 @@ async function handleRequest(request, response) {
   if (request.method === 'GET' && url.pathname === '/api/system/users') {
     const list = await getSystemUsers(url.searchParams.get('keyword') || '');
     sendJson(response, 200, success({ total: list.length, list }));
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/demo/import-export/preview') {
+    const body = await readBody(request);
+    sendJson(response, 200, success(previewImportExportCsv(body.csvText || '')));
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/demo/import-export/confirm') {
+    const body = await readBody(request);
+    sendJson(response, 200, success(await confirmImportExportRows(body.rows || [])));
+    return;
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/demo/import-export/export') {
+    sendJson(response, 200, success(await exportImportExportCsv()));
     return;
   }
 

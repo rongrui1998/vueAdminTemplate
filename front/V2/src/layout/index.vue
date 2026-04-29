@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useAppStore } from '@/store/modules/app';
 import AppMain from '@/layout/components/AppMain.vue';
+import GlobalSettingsDrawer from '@/layout/components/GlobalSettingsDrawer.vue';
 import Sidebar from '@/layout/components/Sidebar.vue';
 import TagViews from '@/layout/components/TagViews.vue';
 import TopNav from '@/layout/components/TopNav.vue';
@@ -9,7 +10,7 @@ const appStore = useAppStore();
 </script>
 
 <template>
-  <el-container class="app-layout">
+  <el-container class="app-layout" :class="`app-layout--${appStore.layoutDensity}`">
     <el-aside :width="appStore.sidebarCollapsed ? '64px' : '220px'" class="app-layout__aside">
       <Sidebar />
     </el-aside>
@@ -19,7 +20,7 @@ const appStore = useAppStore();
         <TopNav />
       </el-header>
 
-      <div class="app-layout__tags">
+      <div v-if="appStore.tagViewsVisible" class="app-layout__tags">
         <TagViews />
       </div>
 
@@ -27,6 +28,8 @@ const appStore = useAppStore();
         <AppMain />
       </el-main>
     </el-container>
+
+    <GlobalSettingsDrawer />
   </el-container>
 </template>
 
@@ -79,5 +82,13 @@ const appStore = useAppStore();
   min-height: 0;
   padding: 20px;
   overflow: auto;
+}
+
+.app-layout--compact .app-layout__main {
+  padding: 12px;
+}
+
+.app-layout--compact .app-layout__tags {
+  min-height: 42px;
 }
 </style>

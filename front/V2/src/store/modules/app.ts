@@ -1,5 +1,11 @@
 import { defineStore } from 'pinia';
-import { STORAGE_KEYS, THEME_MODE, type ThemeMode } from '@/constants/app';
+import {
+  LAYOUT_DENSITY,
+  STORAGE_KEYS,
+  THEME_MODE,
+  type LayoutDensity,
+  type ThemeMode,
+} from '@/constants/app';
 import type { AppSettingsState } from '@/types/route';
 import { applyThemeMode } from '@/hooks/useTheme';
 import { getStorage, setStorage } from '@/utils/storage';
@@ -10,6 +16,13 @@ export const useAppStore = defineStore('app', {
   state: (): AppSettingsState => ({
     sidebarCollapsed: getStorage(STORAGE_KEYS.sidebarCollapsed, false),
     themeMode: getStorage<ThemeMode>(STORAGE_KEYS.themeMode, THEME_MODE.light),
+    layoutDensity: getStorage<LayoutDensity>(
+      STORAGE_KEYS.layoutDensity,
+      LAYOUT_DENSITY.comfortable,
+    ),
+    tagViewsVisible: getStorage(STORAGE_KEYS.tagViewsVisible, true),
+    keepAliveEnabled: getStorage(STORAGE_KEYS.keepAliveEnabled, true),
+    settingsDrawerVisible: false,
     layoutReady: false,
     sidebarAutoCollapsed: false,
   }),
@@ -45,6 +58,27 @@ export const useAppStore = defineStore('app', {
     },
     toggleThemeMode() {
       this.setThemeMode(this.themeMode === THEME_MODE.dark ? THEME_MODE.light : THEME_MODE.dark);
+    },
+    setLayoutDensity(density: LayoutDensity) {
+      this.layoutDensity = density;
+      setStorage(STORAGE_KEYS.layoutDensity, density);
+    },
+    setTagViewsVisible(visible: boolean) {
+      this.tagViewsVisible = visible;
+      setStorage(STORAGE_KEYS.tagViewsVisible, visible);
+    },
+    setKeepAliveEnabled(enabled: boolean) {
+      this.keepAliveEnabled = enabled;
+      setStorage(STORAGE_KEYS.keepAliveEnabled, enabled);
+    },
+    setSettingsDrawerVisible(visible: boolean) {
+      this.settingsDrawerVisible = visible;
+    },
+    openSettingsDrawer() {
+      this.setSettingsDrawerVisible(true);
+    },
+    closeSettingsDrawer() {
+      this.setSettingsDrawerVisible(false);
     },
     setLayoutReady(ready: boolean) {
       this.layoutReady = ready;

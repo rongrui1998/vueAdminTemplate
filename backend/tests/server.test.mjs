@@ -330,3 +330,308 @@ test('system user endpoints support listing and role assignment', async () => {
     await app.cleanup();
   }
 });
+
+test('demo import export endpoints preview, confirm, and export csv data', async () => {
+  const app = await startTestServer();
+
+  try {
+    const loginResponse = await fetch(`${app.baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: 'admin',
+        password: '123456',
+      }),
+    });
+    const loginPayload = await loginResponse.json();
+    const token = loginPayload.data.token;
+
+    const previewResponse = await fetch(`${app.baseUrl}/api/demo/import-export/preview`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        csvText: [
+          'name,email,role,status',
+          '测试管理员,test-admin@example.com,admin,启用',
+          ',broken-email,editor,未知',
+        ].join('\n'),
+      }),
+    });
+    const previewPayload = await previewResponse.json();
+
+    assert.equal(previewResponse.status, 200);
+    assert.equal(previewPayload.code, 200);
+    assert.equal(previewPayload.data.total, 2);
+    assert.equal(previewPayload.data.validCount, 1);
+    assert.equal(previewPayload.data.invalidCount, 1);
+    assert.equal(previewPayload.data.rows[0].valid, true);
+    assert.equal(previewPayload.data.rows[1].valid, false);
+    assert.equal(previewPayload.data.rows[1].errors.includes('名称不能为空'), true);
+
+    const confirmResponse = await fetch(`${app.baseUrl}/api/demo/import-export/confirm`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        rows: previewPayload.data.rows.filter((row) => row.valid).map((row) => row.data),
+      }),
+    });
+    const confirmPayload = await confirmResponse.json();
+
+    assert.equal(confirmResponse.status, 200);
+    assert.equal(confirmPayload.code, 200);
+    assert.equal(confirmPayload.data.importedCount, 1);
+
+    const exportResponse = await fetch(`${app.baseUrl}/api/demo/import-export/export`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const exportPayload = await exportResponse.json();
+
+    assert.equal(exportResponse.status, 200);
+    assert.equal(exportPayload.code, 200);
+    assert.match(exportPayload.data.csvText, /name,email,role,status/);
+    assert.match(exportPayload.data.csvText, /测试管理员,test-admin@example.com,admin,启用/);
+  } finally {
+    await app.close();
+    await app.cleanup();
+  }
+});
+
+test('dashboard statistics endpoint returns summary cards', async () => {
+  const app = await startTestServer();
+
+  try {
+    const loginResponse = await fetch(`${app.baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: 'admin',
+        password: '123456',
+      }),
+    });
+    const loginPayload = await loginResponse.json();
+    const token = loginPayload.data.token;
+
+    const response = await fetch(`${app.baseUrl}/api/dashboard/statistics`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const payload = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(payload.code, 200);
+    assert.equal(Array.isArray(payload.data.cards), true);
+    assert.equal(payload.data.cards.some((item) => item.key === 'users'), true);
+  } finally {
+    await app.close();
+    await app.cleanup();
+  }
+});
+
+test('demo user endpoints support CRUD and pagination', async () => {
+  const app = await startTestServer();
+
+  try {
+    const loginResponse = await fetch(`${app.baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: 'admin',
+        password: '123456',
+      }),
+    });
+    const loginPayload = await loginResponse.json();
+    const token = loginPayload.data.token;
+
+    const listResponse = await fetch(`${app.baseUrl}/api/demo/users?pageNum=1&pageSize=2`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const listPayload = await listResponse.json();
+
+    assert.equal(listResponse.status, 200);
+    assert.equal(listPayload.code, 200);
+    assert.equal(listPayload.data.list.length, 2);
+    assert.equal(typeof listPayload.data.total, 'number');
+
+    const createResponse = await fetch(`${app.baseUrl}/api/demo/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        name: '测试账号',
+        email: 'demo-user@example.com',
+        role: '测试角色',
+        department: '质量中心',
+        status: 1,
+      }),
+    });
+    const createPayload = await createResponse.json();
+
+    assert.equal(createResponse.status, 200);
+    assert.equal(createPayload.code, 200);
+    assert.equal(createPayload.data.email, 'demo-user@example.com');
+
+    const detailResponse = await fetch(`${app.baseUrl}/api/demo/users/${createPayload.data.id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const detailPayload = await detailResponse.json();
+
+    assert.equal(detailResponse.status, 200);
+    assert.equal(detailPayload.data.name, '测试账号');
+
+    const updateResponse = await fetch(`${app.baseUrl}/api/demo/users/${createPayload.data.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        name: '测试账号更新',
+        email: 'demo-user@example.com',
+        role: '测试角色',
+        department: '质量中心',
+        status: 0,
+      }),
+    });
+    const updatePayload = await updateResponse.json();
+
+    assert.equal(updateResponse.status, 200);
+    assert.equal(updatePayload.data.status, 0);
+
+    const deleteResponse = await fetch(`${app.baseUrl}/api/demo/users/${createPayload.data.id}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const deletePayload = await deleteResponse.json();
+
+    assert.equal(deleteResponse.status, 200);
+    assert.equal(deletePayload.code, 200);
+  } finally {
+    await app.close();
+    await app.cleanup();
+  }
+});
+
+test('business template endpoints support listing, create, detail, update, and delete', async () => {
+  const app = await startTestServer();
+
+  try {
+    const loginResponse = await fetch(`${app.baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: 'admin',
+        password: '123456',
+      }),
+    });
+    const loginPayload = await loginResponse.json();
+    const token = loginPayload.data.token;
+
+    const listResponse = await fetch(`${app.baseUrl}/api/demo/business-templates?keyword=客户`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const listPayload = await listResponse.json();
+
+    assert.equal(listResponse.status, 200);
+    assert.equal(listPayload.code, 200);
+    assert.equal(listPayload.data.list.some((item) => item.name === '客户资料维护'), true);
+
+    const createResponse = await fetch(`${app.baseUrl}/api/demo/business-templates`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        name: '合同模板维护',
+        owner: '法务中台',
+        scene: '合同管理',
+        status: 1,
+        remark: '接口创建的业务模板',
+      }),
+    });
+    const createPayload = await createResponse.json();
+
+    assert.equal(createResponse.status, 200);
+    assert.equal(createPayload.code, 200);
+    assert.equal(createPayload.data.name, '合同模板维护');
+
+    const detailResponse = await fetch(
+      `${app.baseUrl}/api/demo/business-templates/${createPayload.data.id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+    const detailPayload = await detailResponse.json();
+
+    assert.equal(detailResponse.status, 200);
+    assert.equal(detailPayload.data.owner, '法务中台');
+
+    const updateResponse = await fetch(
+      `${app.baseUrl}/api/demo/business-templates/${createPayload.data.id}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: '合同配置维护',
+          owner: '法务中台',
+          scene: '合同管理',
+          status: 0,
+          remark: '已停用',
+        }),
+      },
+    );
+    const updatePayload = await updateResponse.json();
+
+    assert.equal(updateResponse.status, 200);
+    assert.equal(updatePayload.data.status, 0);
+
+    const deleteResponse = await fetch(
+      `${app.baseUrl}/api/demo/business-templates/${createPayload.data.id}`,
+      {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+    const deletePayload = await deleteResponse.json();
+
+    assert.equal(deleteResponse.status, 200);
+    assert.equal(deletePayload.code, 200);
+  } finally {
+    await app.close();
+    await app.cleanup();
+  }
+});

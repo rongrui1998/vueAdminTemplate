@@ -14,6 +14,7 @@ import PageContainer from '@/components/PageContainer/index.vue';
 import ProTable from '@/components/ProTable/index.vue';
 import { getStandardDataSourceLabel, isStandardApiMode } from '@/constants/standard';
 import type { SystemMenuFormMode, SystemMenuPayload, SystemMenuRecord } from '@/types/system-menu';
+import { confirmDelete } from '@/utils/confirm';
 import { menuTypeLabelMap, menuTypeTagTypeMap } from './constants';
 import MenuFormDialog from './components/MenuFormDialog.vue';
 
@@ -154,7 +155,7 @@ function openEditDialog(row: SystemMenuRecord) {
 }
 
 async function handleDelete(row: SystemMenuRecord) {
-  const confirmed = window.confirm(`确认删除“${row.name}”吗？如存在下级节点会一并删除。`);
+  const confirmed = await confirmDelete(`确认删除“${row.name}”吗？如存在下级节点会一并删除。`);
 
   if (!confirmed) {
     return;

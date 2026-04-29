@@ -1,21 +1,33 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { ElMessage } from 'element-plus';
+import {
+  confirmImportExportApi,
+  exportImportExportApi,
+  previewImportExportApi,
+} from '@/api/import-export';
 import PageContainer from '@/components/PageContainer/index.vue';
 import ProTable from '@/components/ProTable/index.vue';
 import DrawerForm from '@/components/DrawerForm/index.vue';
-import { buildCsvText, parseCsvText, type CsvRow } from '@/utils/csv';
+import type { ImportExportPreviewResult, ImportExportRow } from '@/types/import-export';
 
 const fileInputRef = ref<HTMLInputElement>();
 const previewVisible = ref(false);
-const importedRows = ref<CsvRow[]>([]);
-const sampleRows = ref<CsvRow[]>([
+const previewLoading = ref(false);
+const confirmLoading = ref(false);
+const exportLoading = ref(false);
+const previewResult = ref<ImportExportPreviewResult | null>(null);
+const sampleRows = ref<ImportExportRow[]>([
   { name: '系统管理员', email: 'admin@example.com', role: 'admin', status: '启用' },
   { name: '运营编辑', email: 'editor@example.com', role: 'editor', status: '启用' },
   { name: '访客账号', email: 'guest@example.com', role: 'guest', status: '停用' },
 ]);
+const previewRows = computed(() => previewResult.value?.rows || []);
+const validPreviewRows = computed(() =>
+  previewRows.value.filter((row) => row.valid).map((row) => row.data),
+);
 const columns = computed(() => {
-  const firstRow = importedRows.value[0] || sampleRows.value[0] || {};
+  const firstRow = previewRows.value[0]?.data || sampleRows.value[0] || {};
   return Object.keys(firstRow);
 });
 
@@ -23,8 +35,7 @@ function openFilePicker() {
   fileInputRef.value?.click();
 }
 
-function downloadCsv(filename: string, rows: CsvRow[]) {
-  const csvText = buildCsvText(rows);
+function downloadCsv(filename: string, csvText: string) {
   const blob = new Blob([`\uFEFF${csvText}`], {
     type: 'text/csv;charset=utf-8',
   });
@@ -45,17 +56,47 @@ async function handleFileChange(event: Event) {
     return;
   }
 
-  const text = await file.text();
-  importedRows.value = parseCsvText(text);
-  previewVisible.value = true;
-  input.value = '';
-  ElMessage.success(`已读取 ${importedRows.value.length} 行数据`);
+  previewLoading.value = true;
+
+  try {
+    const text = await file.text();
+    previewResult.value = await previewImportExportApi(text);
+    previewVisible.value = true;
+    ElMessage.success(`已解析 ${previewResult.value.total} 行数据`);
+  } finally {
+    previewLoading.value = false;
+    input.value = '';
+  }
 }
 
-function confirmImport() {
-  sampleRows.value = importedRows.value;
-  previewVisible.value = false;
-  ElMessage.success('导入预览数据已应用到示例表格');
+async function confirmImport() {
+  if (!validPreviewRows.value.length) {
+    ElMessage.warning('没有可导入的有效数据');
+    return;
+  }
+
+  confirmLoading.value = true;
+
+  try {
+    const result = await confirmImportExportApi(validPreviewRows.value);
+    sampleRows.value = [...validPreviewRows.value];
+    previewVisible.value = false;
+    ElMessage.success(`已导入 ${result.importedCount} 行有效数据`);
+  } finally {
+    confirmLoading.value = false;
+  }
+}
+
+async function exportCurrentData() {
+  exportLoading.value = true;
+
+  try {
+    const result = await exportImportExportApi();
+    downloadCsv(result.filename, result.csvText);
+    ElMessage.success('导出文件已生成');
+  } finally {
+    exportLoading.value = false;
+  }
 }
 </script>
 
@@ -64,10 +105,10 @@ function confirmImport() {
     <div class="import-export-page">
       <section class="import-export-page__hero">
         <p class="import-export-page__eyebrow">Standard 能力</p>
-        <h2>上传、导入预览和导出可以先做轻量前端闭环</h2>
+        <h2>上传、导入预览和导出已经接入后端闭环</h2>
         <p>
-          这个页面演示 CSV 文件选择、数据预览和本地导出。真实项目可以把确认导入换成后端接口，
-          也可以把 CSV 工具替换为 Excel 解析库。
+          这个页面演示 CSV 文件选择、后端预览校验、确认导入和接口导出。真实项目可以继续替换为 Excel
+          解析库、异步导入任务和错误行下载。
         </p>
       </section>
 
@@ -76,8 +117,8 @@ function confirmImport() {
           <div class="import-export-page__toolbar">
             <strong>导入导出演示</strong>
             <div>
-              <el-button @click="openFilePicker">选择 CSV 导入</el-button>
-              <el-button type="primary" @click="downloadCsv('accounts.csv', sampleRows)">
+              <el-button :loading="previewLoading" @click="openFilePicker">选择 CSV 导入</el-button>
+              <el-button type="primary" :loading="exportLoading" @click="exportCurrentData">
                 导出当前数据
               </el-button>
             </div>
@@ -119,18 +160,33 @@ function confirmImport() {
         :visible="previewVisible"
         title="导入预览"
         size="640px"
+        :submitting="confirmLoading"
         confirm-text="确认导入"
         @confirm="confirmImport"
         @update:visible="previewVisible = $event"
       >
-        <ProTable :data="importedRows" row-key="email">
-          <el-table-column
-            v-for="column in columns"
-            :key="column"
-            :prop="column"
-            :label="column"
-            min-width="130"
-          />
+        <div v-if="previewResult" class="import-export-page__summary">
+          <el-tag type="info">总行数 {{ previewResult.total }}</el-tag>
+          <el-tag type="success">有效 {{ previewResult.validCount }}</el-tag>
+          <el-tag type="danger">异常 {{ previewResult.invalidCount }}</el-tag>
+        </div>
+
+        <ProTable :data="previewRows" row-key="rowNumber">
+          <el-table-column v-for="column in columns" :key="column" :label="column" min-width="130">
+            <template #default="{ row }">
+              {{ row.data[column] }}
+            </template>
+          </el-table-column>
+          <el-table-column label="校验结果" min-width="180">
+            <template #default="{ row }">
+              <el-tag v-if="row.valid" type="success">通过</el-tag>
+              <div v-else class="import-export-page__errors">
+                <el-tag v-for="error in row.errors" :key="error" type="danger">
+                  {{ error }}
+                </el-tag>
+              </div>
+            </template>
+          </el-table-column>
         </ProTable>
       </DrawerForm>
     </div>
@@ -176,5 +232,17 @@ function confirmImport() {
 
 .import-export-page__file-input {
   display: none;
+}
+
+.import-export-page__summary {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.import-export-page__errors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 </style>
