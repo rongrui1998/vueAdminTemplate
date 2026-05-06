@@ -29,6 +29,19 @@ const initialSystemUserData: MockSystemUser[] = [
     createdAt: '2026-04-27 10:00:00',
     remark: '运营内容账号',
   },
+  {
+    id: 'u-3',
+    username: 'rongrui',
+    password: '123456',
+    nickname: '荣睿',
+    roleIds: ['customer'],
+    roleNames: ['客服'],
+    status: 1,
+    token: 'mock-access-token-rongrui',
+    lastLoginAt: '-',
+    createdAt: '2026-04-29 08:02:41',
+    remark: '荣睿客服',
+  },
 ];
 
 const mockGlobal = globalThis as typeof globalThis & {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
+import { useI18n } from 'vue-i18n';
 import ModalForm from '@/components/ModalForm/index.vue';
 import type { SystemMenuFormMode, SystemMenuPayload, SystemMenuRecord } from '@/types/system-menu';
 import { defaultMenuPayload, menuTypeOptions } from '../constants';
@@ -29,17 +30,18 @@ const ROOT_PARENT_VALUE = '__ROOT__';
 const formModel = reactive<SystemMenuPayload>({
   ...defaultMenuPayload,
 });
+const { t } = useI18n();
 
 const dialogTitle = computed(() => {
   if (props.mode === 'edit') {
-    return '修改菜单';
+    return t('systemMenu.form.editTitle');
   }
 
   if (props.mode === 'create-child') {
-    return '新增下级菜单';
+    return t('systemMenu.form.createChildTitle');
   }
 
-  return '新增菜单';
+  return t('systemMenu.form.createTitle');
 });
 
 const isButtonType = computed(() => formModel.type === 'button');
@@ -55,8 +57,12 @@ const selectedParentId = computed({
 });
 
 const rules: FormRules<SystemMenuPayload> = {
-  name: [{ required: true, message: '请输入菜单标题', trigger: 'blur' }],
-  type: [{ required: true, message: '请选择菜单类型', trigger: 'change' }],
+  name: [
+    { required: true, message: t('systemMenu.form.validation.nameRequired'), trigger: 'blur' },
+  ],
+  type: [
+    { required: true, message: t('systemMenu.form.validation.typeRequired'), trigger: 'change' },
+  ],
   path: [
     {
       validator: (_rule, value, callback) => {
@@ -66,7 +72,7 @@ const rules: FormRules<SystemMenuPayload> = {
         }
 
         if (!String(value || '').trim()) {
-          callback(new Error('请输入路由地址'));
+          callback(new Error(t('systemMenu.form.validation.pathRequired')));
           return;
         }
 
@@ -84,7 +90,7 @@ const rules: FormRules<SystemMenuPayload> = {
         }
 
         if (!String(value || '').trim()) {
-          callback(new Error('请输入页面组件路径'));
+          callback(new Error(t('systemMenu.form.validation.componentRequired')));
           return;
         }
 
@@ -102,7 +108,7 @@ const rules: FormRules<SystemMenuPayload> = {
         }
 
         if (!String(value || '').trim()) {
-          callback(new Error('请输入权限标识'));
+          callback(new Error(t('systemMenu.form.validation.permissionRequired')));
           return;
         }
 
@@ -119,6 +125,7 @@ function normalizeFromRecord(record?: SystemMenuRecord | null) {
     parentId: record?.parentId ?? null,
     type: record?.type || 'menu',
     name: record?.name || '',
+    nameEn: record?.nameEn || '',
     path: record?.path || '',
     component: record?.component || '',
     permission: record?.permission || '',
@@ -203,6 +210,7 @@ async function submitForm() {
     permission: formModel.type === 'directory' ? '' : formModel.permission.trim(),
     icon: formModel.icon.trim() || (isButtonType.value ? 'Document' : 'Menu'),
     name: formModel.name.trim(),
+    nameEn: formModel.nameEn.trim(),
     remark: formModel.remark.trim(),
   };
 
@@ -216,16 +224,20 @@ async function submitForm() {
     :title="dialogTitle"
     width="720px"
     :submitting="submitting"
-    confirm-text="保存菜单"
+    :confirm-text="t('systemMenu.form.confirm')"
     @confirm="submitForm"
     @update:visible="emit('update:visible', $event)"
   >
     <el-form ref="formRef" :model="formModel" :rules="rules" label-width="96px">
       <el-row :gutter="16">
         <el-col :span="12">
-          <el-form-item label="上级菜单">
-            <el-select v-model="selectedParentId" placeholder="选择上级菜单" class="w-full">
-              <el-option label="作为顶级菜单" :value="ROOT_PARENT_VALUE" />
+          <el-form-item :label="t('systemMenu.form.parentId')">
+            <el-select
+              v-model="selectedParentId"
+              :placeholder="t('systemMenu.form.parentPlaceholder')"
+              class="w-full"
+            >
+              <el-option :label="t('systemMenu.form.rootParent')" :value="ROOT_PARENT_VALUE" />
               <el-option
                 v-for="item in parentOptions"
                 :key="item.id"
@@ -237,7 +249,7 @@ async function submitForm() {
         </el-col>
 
         <el-col :span="12">
-          <el-form-item label="菜单类型" prop="type">
+          <el-form-item :label="t('systemMenu.form.type')" prop="type">
             <el-radio-group v-model="formModel.type">
               <el-radio-button
                 v-for="item in menuTypeOptions"
@@ -252,79 +264,103 @@ async function submitForm() {
         </el-col>
 
         <el-col :span="12">
-          <el-form-item label="菜单标题" prop="name">
-            <el-input v-model="formModel.name" placeholder="请输入菜单标题" />
-          </el-form-item>
-        </el-col>
-
-        <el-col :span="12">
-          <el-form-item label="图标名称">
-            <el-input v-model="formModel.icon" placeholder="例如：Menu / Setting / User" />
-          </el-form-item>
-        </el-col>
-
-        <el-col v-if="shouldShowPath" :span="12">
-          <el-form-item label="路由地址" prop="path">
-            <el-input v-model="formModel.path" placeholder="例如：/system/menu" />
-          </el-form-item>
-        </el-col>
-
-        <el-col v-if="shouldShowComponent" :span="12">
-          <el-form-item label="页面组件" prop="component">
-            <el-input v-model="formModel.component" placeholder="例如：system/menu/index" />
-          </el-form-item>
-        </el-col>
-
-        <el-col v-if="shouldShowPermission" :span="12">
-          <el-form-item label="权限标识" prop="permission">
-            <el-input v-model="formModel.permission" placeholder="例如：system:menu:view" />
-          </el-form-item>
-        </el-col>
-
-        <el-col :span="12">
-          <el-form-item label="排序">
-            <el-input-number v-model="formModel.sort" :min="1" :max="999" class="w-full" />
-          </el-form-item>
-        </el-col>
-
-        <el-col :span="12">
-          <el-form-item label="状态">
-            <el-switch
-              v-model="formModel.status"
-              inline-prompt
-              :active-value="1"
-              :inactive-value="0"
-              active-text="启用"
-              inactive-text="停用"
+          <el-form-item :label="t('systemMenu.form.name')" prop="name">
+            <el-input
+              v-model="formModel.name"
+              :placeholder="t('systemMenu.form.placeholders.name')"
             />
           </el-form-item>
         </el-col>
 
         <el-col :span="12">
-          <el-form-item label="是否隐藏">
+          <el-form-item :label="t('systemMenu.form.nameEn')" prop="nameEn">
+            <el-input
+              v-model="formModel.nameEn"
+              :placeholder="t('systemMenu.form.placeholders.nameEn')"
+            />
+          </el-form-item>
+        </el-col>
+
+        <el-col :span="12">
+          <el-form-item :label="t('systemMenu.form.icon')">
+            <el-input
+              v-model="formModel.icon"
+              :placeholder="t('systemMenu.form.placeholders.icon')"
+            />
+          </el-form-item>
+        </el-col>
+
+        <el-col v-if="shouldShowPath" :span="12">
+          <el-form-item :label="t('systemMenu.form.path')" prop="path">
+            <el-input
+              v-model="formModel.path"
+              :placeholder="t('systemMenu.form.placeholders.path')"
+            />
+          </el-form-item>
+        </el-col>
+
+        <el-col v-if="shouldShowComponent" :span="12">
+          <el-form-item :label="t('systemMenu.form.component')" prop="component">
+            <el-input
+              v-model="formModel.component"
+              :placeholder="t('systemMenu.form.placeholders.component')"
+            />
+          </el-form-item>
+        </el-col>
+
+        <el-col v-if="shouldShowPermission" :span="12">
+          <el-form-item :label="t('systemMenu.form.permission')" prop="permission">
+            <el-input
+              v-model="formModel.permission"
+              :placeholder="t('systemMenu.form.placeholders.permission')"
+            />
+          </el-form-item>
+        </el-col>
+
+        <el-col :span="12">
+          <el-form-item :label="t('systemMenu.form.sort')">
+            <el-input-number v-model="formModel.sort" :min="1" :max="999" class="w-full" />
+          </el-form-item>
+        </el-col>
+
+        <el-col :span="12">
+          <el-form-item :label="t('systemMenu.form.status')">
+            <el-switch
+              v-model="formModel.status"
+              inline-prompt
+              :active-value="1"
+              :inactive-value="0"
+              :active-text="t('common.status.active')"
+              :inactive-text="t('common.status.inactive')"
+            />
+          </el-form-item>
+        </el-col>
+
+        <el-col :span="12">
+          <el-form-item :label="t('systemMenu.form.hidden')">
             <el-switch v-model="formModel.hidden" />
           </el-form-item>
         </el-col>
 
         <el-col v-if="shouldShowMenuFlags" :span="12">
-          <el-form-item label="页面缓存">
+          <el-form-item :label="t('systemMenu.form.keepAlive')">
             <el-switch v-model="formModel.keepAlive" />
           </el-form-item>
         </el-col>
 
         <el-col v-if="shouldShowMenuFlags" :span="12">
-          <el-form-item label="固定标签">
+          <el-form-item :label="t('systemMenu.form.affix')">
             <el-switch v-model="formModel.affix" />
           </el-form-item>
         </el-col>
 
         <el-col :span="24">
-          <el-form-item label="备注">
+          <el-form-item :label="t('systemMenu.form.remark')">
             <el-input
               v-model="formModel.remark"
               type="textarea"
               :rows="3"
-              placeholder="补充当前菜单节点用途说明"
+              :placeholder="t('systemMenu.form.placeholders.remark')"
             />
           </el-form-item>
         </el-col>

@@ -1,5 +1,7 @@
 import { findMockAccount, getMockUserInfoByToken, mockAccounts } from '@/mock/data/auth';
 import { menuData } from '@/mock/data/menus';
+import { systemMenuData } from '@/mock/data/system-menu';
+import { systemRoleData } from '@/mock/data/system-role';
 import businessTemplateMock from '@/mock/modules/business-template';
 import menuMock from '@/mock/modules/menu';
 import importExportMock from '@/mock/modules/import-export';
@@ -43,6 +45,42 @@ function findMenuByName(list: BackendMenuItem[], name: string): BackendMenuItem 
 
   return null;
 }
+
+function collectPermissions(list: BackendMenuItem[]) {
+  const permissions = new Set<string>();
+
+  function walk(items: BackendMenuItem[]) {
+    items.forEach((item) => {
+      if (item.permission) {
+        permissions.add(item.permission);
+      }
+
+      if (item.children?.length) {
+        walk(item.children);
+      }
+    });
+  }
+
+  walk(list);
+  return permissions;
+}
+
+const requiredPermissionCodes = [
+  'demo:crud:view',
+  'demo:crud:create',
+  'demo:crud:edit',
+  'demo:crud:delete',
+  'demo:permission:view',
+  'demo:permission:create',
+  'demo:permission:export',
+  'demo:permission:approve',
+  'demo:permission:delete',
+  'demo:business-template:view',
+  'demo:business-template:create',
+  'demo:business-template:edit',
+  'demo:business-template:status',
+  'demo:business-template:delete',
+];
 
 describe('mock contracts', () => {
   it('exposes the login accounts and user payload shape', () => {
@@ -102,12 +140,32 @@ describe('mock contracts', () => {
         permission: 'demo:business-template:view',
       }),
     );
+    expect(findMenuByName(menuData, '标准业务模板')?.children).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ permission: 'demo:business-template:create' }),
+        expect.objectContaining({ permission: 'demo:business-template:edit' }),
+        expect.objectContaining({ permission: 'demo:business-template:status' }),
+        expect.objectContaining({ permission: 'demo:business-template:delete' }),
+      ]),
+    );
     expect(findMenuByName(menuData, '全局设置')).toBeNull();
   });
 
   it('keeps every menu id unique so dynamic route names do not collide', () => {
     const ids = collectMenuIds(menuData);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('keeps page and button permissions available in sidebar and system menu data', () => {
+    const sidebarPermissions = collectPermissions(menuData);
+    const systemMenuPermissions = collectPermissions(systemMenuData);
+    const adminRole = systemRoleData.find((item) => item.id === 'admin');
+
+    requiredPermissionCodes.forEach((permission) => {
+      expect(sidebarPermissions.has(permission)).toBe(true);
+      expect(systemMenuPermissions.has(permission)).toBe(true);
+      expect(adminRole?.permissions).toContain(permission);
+    });
   });
 
   it('exposes menus created in menu management to the admin sidebar mock', () => {

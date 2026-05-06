@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus/es/components/message/index.mjs';
 import { DASHBOARD_PATH } from '@/constants/route';
@@ -10,6 +11,7 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const permissionStore = usePermissionStore();
+const { t } = useI18n();
 
 const formRef = ref();
 const loading = ref(false);
@@ -17,11 +19,6 @@ const formModel = reactive({
   username: 'admin',
   password: '123456',
 });
-
-const rules = {
-  username: [{ required: true, message: '请输入账号', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
-};
 
 async function handleLogin() {
   await formRef.value?.validate();
@@ -33,7 +30,7 @@ async function handleLogin() {
     permissionStore.resetPermissionState(router);
     const redirect =
       typeof route.query.redirect === 'string' ? route.query.redirect : DASHBOARD_PATH;
-    ElMessage.success('登录成功');
+    ElMessage.success(t('login.success'));
     router.replace(redirect);
   } finally {
     loading.value = false;
@@ -45,31 +42,44 @@ async function handleLogin() {
   <div class="login-page">
     <el-card class="login-card" shadow="never">
       <div class="login-card__header">
-        <h1>后台模板登录</h1>
-        <p>基于 Vue 3 + Element Plus 的后台管理系统基础模板</p>
+        <h1>{{ t('login.title') }}</h1>
+        <p>{{ t('login.subtitle') }}</p>
       </div>
 
       <el-alert type="info" :closable="false" show-icon>
-        <div>Mock 账号：<code>admin / 123456</code>（完整权限）</div>
-        <div>Mock 账号：<code>editor / 123456</code>（受限权限）</div>
+        <div>
+          {{ t('login.mockAccount') }}：<code>admin / 123456</code>（{{ t('login.fullAccess') }}）
+        </div>
+        <div>
+          {{ t('login.mockAccount') }}：<code>editor / 123456</code>（{{
+            t('login.limitedAccess')
+          }}）
+        </div>
       </el-alert>
 
       <el-form
         ref="formRef"
         :model="formModel"
-        :rules="rules"
+        :rules="{
+          username: [
+            { required: true, message: t('login.validation.usernameRequired'), trigger: 'blur' },
+          ],
+          password: [
+            { required: true, message: t('login.validation.passwordRequired'), trigger: 'blur' },
+          ],
+        }"
         label-position="top"
         @keyup.enter="handleLogin"
       >
-        <el-form-item label="账号" prop="username">
-          <el-input v-model="formModel.username" placeholder="请输入账号" />
+        <el-form-item :label="t('login.username')" prop="username">
+          <el-input v-model="formModel.username" :placeholder="t('login.usernamePlaceholder')" />
         </el-form-item>
-        <el-form-item label="密码" prop="password">
+        <el-form-item :label="t('login.password')" prop="password">
           <el-input
             v-model="formModel.password"
             type="password"
             show-password
-            placeholder="请输入密码"
+            :placeholder="t('login.passwordPlaceholder')"
           />
         </el-form-item>
         <el-form-item>
@@ -79,7 +89,7 @@ async function handleLogin() {
             class="login-card__submit"
             @click="handleLogin"
           >
-            登录
+            {{ t('login.submit') }}
           </el-button>
         </el-form-item>
       </el-form>

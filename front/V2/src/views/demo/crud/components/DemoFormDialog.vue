@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { FormInstance } from 'element-plus';
 import { reactive, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import type { DemoUserForm, DemoUserItem } from '@/types/demo';
 
 const props = withDefaults(
@@ -21,6 +22,7 @@ const emit = defineEmits<{
 }>();
 
 const formRef = ref<FormInstance>();
+const { t } = useI18n();
 const formModel = reactive<DemoUserForm>({
   name: '',
   email: '',
@@ -30,10 +32,14 @@ const formModel = reactive<DemoUserForm>({
 });
 
 const rules = {
-  name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
-  email: [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
-  role: [{ required: true, message: '请输入角色', trigger: 'blur' }],
-  department: [{ required: true, message: '请输入部门', trigger: 'blur' }],
+  name: [{ required: true, message: t('crudDemo.form.validation.nameRequired'), trigger: 'blur' }],
+  email: [
+    { required: true, message: t('crudDemo.form.validation.emailRequired'), trigger: 'blur' },
+  ],
+  role: [{ required: true, message: t('crudDemo.form.validation.roleRequired'), trigger: 'blur' }],
+  department: [
+    { required: true, message: t('crudDemo.form.validation.departmentRequired'), trigger: 'blur' },
+  ],
 };
 
 watch(
@@ -57,7 +63,7 @@ async function handleSubmit() {
 <template>
   <el-dialog
     :model-value="modelValue"
-    :title="currentRow ? '编辑账号' : '新增账号'"
+    :title="currentRow ? t('crudDemo.form.editTitle') : t('crudDemo.form.createTitle')"
     width="520px"
     :close-on-click-modal="!submitting"
     :close-on-press-escape="!submitting"
@@ -65,25 +71,29 @@ async function handleSubmit() {
     @close="emit('update:modelValue', false)"
   >
     <el-form ref="formRef" :model="formModel" :rules="rules" label-width="80px">
-      <el-form-item label="姓名" prop="name">
+      <el-form-item :label="t('crudDemo.form.name')" prop="name">
         <el-input v-model="formModel.name" />
       </el-form-item>
-      <el-form-item label="邮箱" prop="email">
+      <el-form-item :label="t('crudDemo.form.email')" prop="email">
         <el-input v-model="formModel.email" />
       </el-form-item>
-      <el-form-item label="角色" prop="role">
+      <el-form-item :label="t('crudDemo.form.role')" prop="role">
         <el-input v-model="formModel.role" />
       </el-form-item>
-      <el-form-item label="部门" prop="department">
+      <el-form-item :label="t('crudDemo.form.department')" prop="department">
         <el-input v-model="formModel.department" />
       </el-form-item>
-      <el-form-item label="状态">
+      <el-form-item :label="t('crudDemo.form.status')">
         <el-switch v-model="formModel.status" :active-value="1" :inactive-value="0" />
       </el-form-item>
     </el-form>
     <template #footer>
-      <el-button :disabled="submitting" @click="emit('update:modelValue', false)">取消</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSubmit">确定</el-button>
+      <el-button :disabled="submitting" @click="emit('update:modelValue', false)">{{
+        t('common.action.cancel')
+      }}</el-button>
+      <el-button type="primary" :loading="submitting" @click="handleSubmit">{{
+        t('common.action.confirm')
+      }}</el-button>
     </template>
   </el-dialog>
 </template>

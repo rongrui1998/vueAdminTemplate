@@ -2,11 +2,14 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import type { TabViewItem } from '@/types/route';
 import { useRoute, useRouter } from 'vue-router';
+import { APP_LANGUAGE } from '@/constants/app';
 import { DASHBOARD_PATH, REDIRECT_PATH } from '@/constants/route';
+import { useAppStore } from '@/store/modules/app';
 import { useTabsStore } from '@/store/modules/tabs';
 
 const route = useRoute();
 const router = useRouter();
+const appStore = useAppStore();
 const tabsStore = useTabsStore();
 
 const visitedViews = computed(() => tabsStore.visitedViews);
@@ -20,6 +23,7 @@ const contextMenuPosition = reactive({
 });
 const contextMenuTab = ref<TabViewItem | null>(null);
 const contextMenuRef = ref<HTMLElement | null>(null);
+const draggingFullPath = ref('');
 
 function navigateTo(fullPath: string) {
   if (fullPath !== route.fullPath) {
@@ -113,6 +117,24 @@ function hideContextMenu() {
   contextMenuVisible.value = false;
 }
 
+function handleDragStart(tab: TabViewItem) {
+  draggingFullPath.value = tab.fullPath;
+  hideContextMenu();
+}
+
+function handleDrop(target: TabViewItem) {
+  if (!draggingFullPath.value) {
+    return;
+  }
+
+  tabsStore.reorderTabs(draggingFullPath.value, target.fullPath);
+  draggingFullPath.value = '';
+}
+
+function handleDragEnd() {
+  draggingFullPath.value = '';
+}
+
 function handleContextCommand(command: 'refresh' | 'closeCurrent' | 'closeOthers' | 'closeAll') {
   const target = contextMenuTab.value;
   hideContextMenu();
@@ -139,6 +161,14 @@ function handleContextCommand(command: 'refresh' | 'closeCurrent' | 'closeOthers
   closeAllTabs();
 }
 
+function getTabTitle(tab: TabViewItem) {
+  if (appStore.currentLanguage === APP_LANGUAGE.enUS) {
+    return tab.titleEn || tab.title;
+  }
+
+  return tab.title;
+}
+
 onMounted(() => {
   window.addEventListener('click', hideContextMenu);
   window.addEventListener('resize', hideContextMenu);
@@ -161,12 +191,22 @@ onBeforeUnmount(() => {
           :key="tab.fullPath"
           :closable="!tab.affix"
           :effect="tab.fullPath === route.fullPath ? 'dark' : 'plain'"
-          class="tag-views__item"
+          class="tag-views__item tag-views__item--segment"
+          :class="{
+            'is-active': tab.fullPath === route.fullPath,
+            'is-dragging': draggingFullPath === tab.fullPath,
+            'is-affix': tab.affix,
+          }"
+          draggable="true"
           @click="navigateTo(tab.fullPath)"
           @close="handleClose(tab.fullPath)"
           @contextmenu.stop.prevent="openContextMenu($event, tab)"
+          @dragstart="handleDragStart(tab)"
+          @dragover.prevent
+          @drop.prevent="handleDrop(tab)"
+          @dragend="handleDragEnd"
         >
-          {{ tab.title }}
+          {{ getTabTitle(tab) }}
         </el-tag>
       </div>
     </el-scrollbar>
@@ -218,19 +258,105 @@ onBeforeUnmount(() => {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-start;
+  min-width: 0;
+  height: 100%;
+}
+
+.tag-views :deep(.el-scrollbar) {
+  width: 100%;
+  height: 100%;
+}
+
+.tag-views :deep(.el-scrollbar__wrap),
+.tag-views :deep(.el-scrollbar__view) {
+  height: 100%;
 }
 
 .tag-views__list {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 2px 0;
+  align-items: stretch;
+  gap: 0;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
 }
 
 .tag-views__item {
+  --el-tag-border-color: transparent;
+  --el-tag-bg-color: transparent;
+  --el-tag-hover-color: var(--el-text-color-primary);
+
   cursor: pointer;
+}
+
+.tag-views__item--segment {
+  position: relative;
+  min-width: 112px;
+  max-width: 220px;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0 14px;
+  border: 0;
+  border-right: 1px solid var(--el-border-color);
+  border-radius: 0;
+  color: var(--el-text-color-secondary);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.tag-views__item--segment:hover {
+  color: var(--el-text-color-primary);
+  background: color-mix(in srgb, var(--el-fill-color-light) 72%, transparent);
+}
+
+.tag-views__item--segment.is-active {
+  color: var(--el-text-color-primary);
+  background: color-mix(in srgb, var(--el-fill-color) 86%, transparent);
+}
+
+.tag-views__item--segment.is-affix {
+  min-width: 96px;
+}
+
+.tag-views__item--segment.is-dragging {
+  opacity: 0.45;
+}
+
+.tag-views__item--segment :deep(.el-tag__content) {
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag-views__item--segment :deep(.el-tag__close) {
+  width: 18px;
+  height: 18px;
+  margin-left: 2px;
+  border-radius: 50%;
+  color: var(--el-text-color-secondary);
+  background: transparent;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.tag-views__item--segment :deep(.el-tag__close:hover) {
+  color: var(--el-text-color-primary);
+  background: color-mix(in srgb, var(--el-fill-color-light) 70%, transparent);
 }
 
 .tag-views__context-menu {

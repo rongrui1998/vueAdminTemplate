@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { ArrowLeft, House } from '@element-plus/icons-vue';
 import { DASHBOARD_PATH } from '@/constants/route';
 
 const router = useRouter();
+const { t } = useI18n();
 
 function goBack() {
   if (window.history.length > 1) {
@@ -19,18 +21,18 @@ function goBack() {
   <div class="not-found-page">
     <section class="not-found-page__content">
       <div class="not-found-page__code">404</div>
-      <div class="not-found-page__badge">Route Not Found</div>
-      <h1>页面走丢了</h1>
-      <p>当前地址没有匹配到可用页面。你可以返回首页，或回到上一页继续处理刚才的工作。</p>
+      <div class="not-found-page__badge">{{ t('error404.badge') }}</div>
+      <h1>{{ t('error404.title') }}</h1>
+      <p>{{ t('error404.description') }}</p>
 
       <div class="not-found-page__actions">
         <el-button type="primary" size="large" @click="router.push(DASHBOARD_PATH)">
           <el-icon><House /></el-icon>
-          返回首页
+          {{ t('error404.backHome') }}
         </el-button>
         <el-button size="large" @click="goBack">
           <el-icon><ArrowLeft /></el-icon>
-          返回上一页
+          {{ t('error404.backPrevious') }}
         </el-button>
       </div>
     </section>

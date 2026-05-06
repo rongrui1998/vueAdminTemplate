@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
+import { useI18n } from 'vue-i18n';
 import ModalForm from '@/components/ModalForm/index.vue';
 import type { SystemRoleRecord } from '@/types/system-role';
 import type { SystemUserPayload, SystemUserRecord } from '@/types/system-user';
@@ -18,6 +19,7 @@ const emit = defineEmits<{
 }>();
 
 const formRef = ref<FormInstance>();
+const { t } = useI18n();
 const formModel = reactive<SystemUserPayload>({
   username: '',
   nickname: '',
@@ -27,13 +29,21 @@ const formModel = reactive<SystemUserPayload>({
   remark: '',
 });
 
-const dialogTitle = computed(() => (props.record ? '修改用户' : '新增用户'));
+const dialogTitle = computed(() =>
+  props.record ? t('systemUser.form.editTitle') : t('systemUser.form.createTitle'),
+);
 const isEditMode = computed(() => Boolean(props.record));
 
 const rules: FormRules<SystemUserPayload> = {
-  username: [{ required: true, message: '请输入登录账号', trigger: 'blur' }],
-  nickname: [{ required: true, message: '请输入用户昵称', trigger: 'blur' }],
-  roleIds: [{ required: true, message: '请选择绑定角色', trigger: 'change' }],
+  username: [
+    { required: true, message: t('systemUser.form.validation.usernameRequired'), trigger: 'blur' },
+  ],
+  nickname: [
+    { required: true, message: t('systemUser.form.validation.nicknameRequired'), trigger: 'blur' },
+  ],
+  roleIds: [
+    { required: true, message: t('systemUser.form.validation.roleIdsRequired'), trigger: 'change' },
+  ],
 };
 
 function resetFormModel() {
@@ -86,51 +96,58 @@ async function submitForm() {
     width="620px"
     :visible="visible"
     :submitting="submitting"
-    confirm-text="保存"
+    :confirm-text="t('common.action.save')"
     @confirm="submitForm"
     @update:visible="emit('update:visible', $event)"
   >
     <el-form ref="formRef" :model="formModel" :rules="rules" label-width="96px">
       <el-row :gutter="16">
         <el-col :span="12">
-          <el-form-item label="登录账号" prop="username">
+          <el-form-item :label="t('systemUser.form.username')" prop="username">
             <el-input
               v-model="formModel.username"
               :disabled="isEditMode"
-              placeholder="请输入登录账号"
+              :placeholder="t('systemUser.form.placeholders.username')"
             />
           </el-form-item>
         </el-col>
 
         <el-col :span="12">
-          <el-form-item label="用户昵称" prop="nickname">
-            <el-input v-model="formModel.nickname" placeholder="请输入用户昵称" />
+          <el-form-item :label="t('systemUser.form.nickname')" prop="nickname">
+            <el-input
+              v-model="formModel.nickname"
+              :placeholder="t('systemUser.form.placeholders.nickname')"
+            />
           </el-form-item>
         </el-col>
 
         <el-col v-if="!isEditMode" :span="12">
-          <el-form-item label="初始密码">
-            <el-input v-model="formModel.password" show-password placeholder="默认 123456" />
+          <el-form-item :label="t('systemUser.form.initialPassword')">
+            <el-input
+              v-model="formModel.password"
+              show-password
+              :placeholder="t('systemUser.form.placeholders.password')"
+            />
           </el-form-item>
         </el-col>
 
         <el-col :span="12">
-          <el-form-item label="状态">
+          <el-form-item :label="t('systemUser.form.status')">
             <el-radio-group v-model="formModel.status">
-              <el-radio-button :value="1">启用</el-radio-button>
-              <el-radio-button :value="0">停用</el-radio-button>
+              <el-radio-button :value="1">{{ t('common.status.active') }}</el-radio-button>
+              <el-radio-button :value="0">{{ t('common.status.inactive') }}</el-radio-button>
             </el-radio-group>
           </el-form-item>
         </el-col>
 
         <el-col :span="24">
-          <el-form-item label="绑定角色" prop="roleIds">
+          <el-form-item :label="t('systemUser.form.roleIds')" prop="roleIds">
             <el-select
               v-model="formModel.roleIds"
               multiple
               collapse-tags
               collapse-tags-tooltip
-              placeholder="请选择绑定角色"
+              :placeholder="t('systemUser.form.placeholders.roleIds')"
               class="w-full"
             >
               <el-option
@@ -145,12 +162,12 @@ async function submitForm() {
         </el-col>
 
         <el-col :span="24">
-          <el-form-item label="备注">
+          <el-form-item :label="t('systemUser.form.remark')">
             <el-input
               v-model="formModel.remark"
               type="textarea"
               :rows="3"
-              placeholder="请输入备注"
+              :placeholder="t('systemUser.form.placeholders.remark')"
             />
           </el-form-item>
         </el-col>

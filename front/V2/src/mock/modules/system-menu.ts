@@ -39,6 +39,7 @@ function normalizePayload(data: Partial<SystemMenuPayload>) {
     parentId: data.parentId ?? null,
     type,
     name: data.name?.trim() || '未命名菜单',
+    nameEn: data.nameEn?.trim() || '',
     path: data.path?.trim() || '',
     component:
       type === 'directory' ? 'ParentView' : type === 'button' ? '' : data.component?.trim() || '',

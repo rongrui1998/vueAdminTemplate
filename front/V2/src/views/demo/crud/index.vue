@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
+import { useI18n } from 'vue-i18n';
 import PageContainer from '@/components/PageContainer/index.vue';
 import {
   createDemoUserApi,
@@ -31,6 +32,8 @@ const statusLoadingMap = reactive<Record<string, boolean>>({});
 const total = ref(0);
 const tableData = ref<DemoUserItem[]>([]);
 const { hasPermission } = usePermission();
+const { t } = useI18n();
+const pageTitle = computed(() => t('crudDemo.title'));
 
 const queryForm = reactive({
   keyword: '',
@@ -56,7 +59,8 @@ async function loadTableData() {
     tableData.value = [];
     total.value = 0;
     pageStatus.value = 'error';
-    pageErrorText.value = error instanceof Error ? error.message : '获取列表失败，请稍后重试';
+    pageErrorText.value =
+      error instanceof Error ? error.message : t('crudDemo.messages.loadListFailed');
   } finally {
     loading.value = false;
   }
@@ -116,7 +120,7 @@ async function handleDelete(row: DemoUserItem) {
     return;
   }
 
-  const confirmed = await confirmDelete(`确认删除账号「${row.name}」吗？`);
+  const confirmed = await confirmDelete(t('crudDemo.messages.confirmDelete', { name: row.name }));
 
   if (!confirmed) {
     return;
@@ -126,7 +130,7 @@ async function handleDelete(row: DemoUserItem) {
 
   try {
     await deleteDemoUserApi(row.id);
-    ElMessage.success('删除成功');
+    ElMessage.success(t('crudDemo.messages.deleteSuccess'));
 
     if (tableData.value.length === 1 && queryForm.pageNum > 1) {
       queryForm.pageNum -= 1;
@@ -153,7 +157,7 @@ async function handleStatusChange(row: DemoUserItem, value: number) {
       department: row.department,
       status: value,
     });
-    ElMessage.success('状态更新成功');
+    ElMessage.success(t('crudDemo.messages.statusUpdateSuccess'));
     await loadTableData();
   } finally {
     delete statusLoadingMap[row.id];
@@ -170,10 +174,10 @@ async function handleSubmit(formData: DemoUserForm) {
   try {
     if (currentRow.value) {
       await updateDemoUserApi(currentRow.value.id, formData);
-      ElMessage.success('编辑成功');
+      ElMessage.success(t('crudDemo.messages.editSuccess'));
     } else {
       await createDemoUserApi(formData);
-      ElMessage.success('新增成功');
+      ElMessage.success(t('crudDemo.messages.createSuccess'));
     }
 
     dialogVisible.value = false;
@@ -189,29 +193,35 @@ onMounted(() => {
 </script>
 
 <template>
-  <PageContainer title="CRUD 示例">
+  <PageContainer :title="pageTitle">
     <el-card shadow="never">
       <el-form :inline="true" :model="queryForm">
-        <el-form-item label="关键字">
-          <el-input v-model="queryForm.keyword" placeholder="姓名 / 邮箱" clearable />
+        <el-form-item :label="t('crudDemo.filters.keyword')">
+          <el-input
+            v-model="queryForm.keyword"
+            :placeholder="t('crudDemo.filters.keywordPlaceholder')"
+            clearable
+          />
         </el-form-item>
-        <el-form-item label="状态">
+        <el-form-item :label="t('crudDemo.filters.status')">
           <el-select
             v-model="queryForm.status"
-            placeholder="请选择状态"
+            :placeholder="t('crudDemo.filters.statusPlaceholder')"
             clearable
             style="width: 160px"
           >
-            <el-option label="启用" :value="1" />
-            <el-option label="停用" :value="0" />
+            <el-option :label="t('common.status.active')" :value="1" />
+            <el-option :label="t('common.status.inactive')" :value="0" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button @click="handleReset">重置</el-button>
-          <el-button v-permission="'demo:crud:create'" type="success" @click="handleCreate"
-            >新增账号</el-button
-          >
+          <el-button type="primary" @click="handleSearch">{{
+            t('common.action.search')
+          }}</el-button>
+          <el-button @click="handleReset">{{ t('common.action.reset') }}</el-button>
+          <el-button v-permission="'demo:crud:create'" type="success" @click="handleCreate">{{
+            t('crudDemo.actions.createAccount')
+          }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -219,9 +229,15 @@ onMounted(() => {
     <el-card shadow="never">
       <template v-if="pageStatus === 'error'">
         <div class="crud-page__state">
-          <el-result icon="error" title="加载失败" :sub-title="pageErrorText || '请稍后重试'">
+          <el-result
+            icon="error"
+            :title="t('crudDemo.states.loadFailed')"
+            :sub-title="pageErrorText || t('crudDemo.states.retryLater')"
+          >
             <template #extra>
-              <el-button type="primary" @click="loadTableData">重新加载</el-button>
+              <el-button type="primary" @click="loadTableData">{{
+                t('crudDemo.actions.reload')
+              }}</el-button>
             </template>
           </el-result>
         </div>
@@ -229,13 +245,13 @@ onMounted(() => {
 
       <template v-else-if="pageStatus === 'success' && !tableData.length">
         <div class="crud-page__state">
-          <el-empty description="暂无查询结果">
+          <el-empty :description="t('crudDemo.states.empty')">
             <template #default>
               <div class="crud-page__empty-actions">
-                <el-button v-permission="'demo:crud:create'" type="primary" @click="handleCreate"
-                  >新增账号</el-button
-                >
-                <el-button @click="handleReset">重置筛选</el-button>
+                <el-button v-permission="'demo:crud:create'" type="primary" @click="handleCreate">{{
+                  t('crudDemo.actions.createAccount')
+                }}</el-button>
+                <el-button @click="handleReset">{{ t('crudDemo.actions.resetFilters') }}</el-button>
               </div>
             </template>
           </el-empty>
@@ -244,11 +260,15 @@ onMounted(() => {
 
       <template v-else>
         <el-table v-loading="loading" :data="tableData">
-          <el-table-column prop="name" label="姓名" min-width="120" />
-          <el-table-column prop="email" label="邮箱" min-width="220" />
-          <el-table-column prop="role" label="角色" min-width="140" />
-          <el-table-column prop="department" label="部门" min-width="140" />
-          <el-table-column label="状态" width="120">
+          <el-table-column prop="name" :label="t('crudDemo.table.name')" min-width="120" />
+          <el-table-column prop="email" :label="t('crudDemo.table.email')" min-width="220" />
+          <el-table-column prop="role" :label="t('crudDemo.table.role')" min-width="140" />
+          <el-table-column
+            prop="department"
+            :label="t('crudDemo.table.department')"
+            min-width="140"
+          />
+          <el-table-column :label="t('crudDemo.table.status')" width="120">
             <template #default="{ row }">
               <el-switch
                 :model-value="row.status"
@@ -262,17 +282,23 @@ onMounted(() => {
               />
             </template>
           </el-table-column>
-          <el-table-column prop="createdAt" label="创建时间" min-width="180" />
-          <el-table-column label="操作" width="220" fixed="right">
+          <el-table-column
+            prop="createdAt"
+            :label="t('crudDemo.table.createdAt')"
+            min-width="180"
+          />
+          <el-table-column :label="t('crudDemo.table.actions')" width="220" fixed="right">
             <template #default="{ row }">
               <el-space>
-                <el-button text type="primary" @click="handleDetail(row)">详情</el-button>
+                <el-button text type="primary" @click="handleDetail(row)">{{
+                  t('common.action.detail')
+                }}</el-button>
                 <el-button
                   v-permission="'demo:crud:edit'"
                   text
                   type="primary"
                   @click="handleEdit(row)"
-                  >编辑</el-button
+                  >{{ t('common.action.edit') }}</el-button
                 >
                 <el-button
                   v-permission="'demo:crud:delete'"
@@ -282,7 +308,7 @@ onMounted(() => {
                   :disabled="deletingRowId === row.id"
                   @click="handleDelete(row)"
                 >
-                  删除
+                  {{ t('common.action.delete') }}
                 </el-button>
               </el-space>
             </template>

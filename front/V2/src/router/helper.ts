@@ -1,4 +1,6 @@
 import type { AppMenuItem } from '@/types/menu';
+import { resolveMenuTitle } from '@/utils/route';
+import { APP_LANGUAGE } from '@/constants/app';
 
 export function normalizeChildPath(path: string) {
   return path.replace(/^\/+/, '');
@@ -6,7 +8,8 @@ export function normalizeChildPath(path: string) {
 
 export function buildRouteMeta(menu: AppMenuItem) {
   return {
-    title: menu.name,
+    title: resolveMenuTitle(menu, APP_LANGUAGE.zhCN),
+    titleEn: resolveMenuTitle(menu, APP_LANGUAGE.enUS),
     icon: menu.icon,
     hidden: menu.hidden,
     keepAlive: menu.keepAlive,

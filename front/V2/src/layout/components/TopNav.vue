@@ -5,16 +5,21 @@ import {
   Expand,
   Fold,
   FullScreen,
+  MagicStick,
+  Lock,
   Moon,
+  Right,
   ScaleToOriginal,
   Sunny,
 } from '@element-plus/icons-vue';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus/es/components/message/index.mjs';
 import NotificationPanel from '@/components/NotificationPanel/index.vue';
-import { STORAGE_KEYS } from '@/constants/app';
+import { APP_LANGUAGE, LAYOUT_MODE, STORAGE_KEYS } from '@/constants/app';
 import BreadcrumbNav from '@/layout/components/BreadcrumbNav.vue';
+import SidebarMenu from '@/layout/components/SidebarMenu.vue';
 import { LOGIN_PATH } from '@/constants/route';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { notificationList } from '@/mock/data/notifications';
@@ -32,8 +37,12 @@ const tabsStore = useTabsStore();
 const route = useRoute();
 const router = useRouter();
 const { isFullscreen, toggleFullscreen } = useFullscreen();
+const { t } = useI18n();
 const notificationVisible = ref(false);
 const notificationWrapRef = ref<HTMLElement | null>(null);
+const languageVisible = ref(false);
+const languageWrapRef = ref<HTMLElement | null>(null);
+const currentLanguage = computed(() => appStore.currentLanguage);
 
 const notificationState = ref<NotificationStorageState>(
   getStorage<NotificationStorageState>(STORAGE_KEYS.notifications, {
@@ -43,8 +52,10 @@ const notificationState = ref<NotificationStorageState>(
 );
 
 const isDark = computed(() => appStore.themeMode === 'dark');
+const isHorizontalLayout = computed(() => appStore.layoutMode === 'horizontal');
+const visibleMenus = computed(() => permissionStore.visibleMenus);
 const displayName = computed(
-  () => authStore.userInfo.nickname || authStore.userInfo.username || '管理员',
+  () => authStore.userInfo.nickname || authStore.userInfo.username || t('screenLock.defaultUser'),
 );
 const notifications = computed(() => {
   if (notificationState.value.cleared) {
@@ -62,13 +73,22 @@ function handleThemeToggle() {
   appStore.toggleThemeMode();
 }
 
+function handleSidebarToggle() {
+  if (appStore.layoutMode === LAYOUT_MODE.sidebar) {
+    appStore.setLayoutMode(LAYOUT_MODE.vertical);
+    return;
+  }
+
+  appStore.toggleSidebar();
+}
+
 function persistNotificationState() {
   setStorage(STORAGE_KEYS.notifications, notificationState.value);
 }
 
 function handleFullscreenToggle() {
   toggleFullscreen().catch(() => {
-    ElMessage.warning('当前环境不支持全屏切换');
+    ElMessage.warning(t('topNav.message.fullscreenUnsupported'));
   });
 }
 
@@ -80,15 +100,32 @@ function closeNotificationPanel() {
   notificationVisible.value = false;
 }
 
+function toggleLanguagePanel() {
+  languageVisible.value = !languageVisible.value;
+}
+
+function closeLanguagePanel() {
+  languageVisible.value = false;
+}
+
+function updateCurrentLanguage(language: 'zh-CN' | 'en-US') {
+  appStore.setCurrentLanguage(language);
+  closeLanguagePanel();
+}
+
 function handleDocumentClick(event: MouseEvent) {
   const target = event.target as Node | null;
 
-  if (!notificationWrapRef.value || !target) {
+  if (!target) {
     return;
   }
 
-  if (!notificationWrapRef.value.contains(target)) {
+  if (notificationWrapRef.value && !notificationWrapRef.value.contains(target)) {
     closeNotificationPanel();
+  }
+
+  if (languageWrapRef.value && !languageWrapRef.value.contains(target)) {
+    closeLanguagePanel();
   }
 }
 
@@ -109,7 +146,7 @@ function handleClearNotifications() {
 }
 
 function handleViewAllNotifications() {
-  ElMessage.info('Base 版本暂未提供完整消息列表页');
+  ElMessage.info(t('topNav.message.notificationsUnavailable'));
   closeNotificationPanel();
 }
 
@@ -121,6 +158,10 @@ async function handleLogout() {
     path: LOGIN_PATH,
     query: route.fullPath ? { redirect: route.fullPath } : undefined,
   });
+}
+
+function handleScreenLock() {
+  appStore.setScreenLocked(true);
 }
 
 onMounted(() => {
@@ -135,18 +176,32 @@ onBeforeUnmount(() => {
 <template>
   <div class="top-nav">
     <div class="top-nav__left">
-      <el-button text @click="appStore.toggleSidebar">
+      <el-button
+        v-if="!isHorizontalLayout"
+        text
+        data-test="sidebar-toggle"
+        @click="handleSidebarToggle"
+      >
         <el-icon :size="18">
           <component :is="appStore.sidebarCollapsed ? Expand : Fold" />
         </el-icon>
       </el-button>
 
-      <BreadcrumbNav />
+      <el-menu
+        v-if="isHorizontalLayout"
+        :default-active="route.path"
+        mode="horizontal"
+        router
+        class="top-nav__horizontal-menu"
+      >
+        <SidebarMenu v-for="menu in visibleMenus" :key="menu.id" :menu="menu" />
+      </el-menu>
+      <BreadcrumbNav v-else />
     </div>
 
     <div class="top-nav__right">
       <div class="top-nav__actions">
-        <el-tooltip content="切换明暗模式" placement="bottom">
+        <el-tooltip :content="t('topNav.tooltip.themeToggle')" placement="bottom">
           <el-button text class="top-nav__icon-button" @click="handleThemeToggle">
             <el-icon :size="18">
               <component :is="isDark ? Sunny : Moon" />
@@ -154,8 +209,54 @@ onBeforeUnmount(() => {
           </el-button>
         </el-tooltip>
 
+        <div ref="languageWrapRef" class="top-nav__language">
+          <el-tooltip :content="t('common.language.switch')" placement="bottom">
+            <el-button
+              text
+              class="top-nav__icon-button"
+              data-test="language-switch"
+              @click.stop="toggleLanguagePanel"
+            >
+              <el-icon :size="18"><MagicStick /></el-icon>
+            </el-button>
+          </el-tooltip>
+
+          <div
+            v-if="languageVisible"
+            class="top-nav__language-panel"
+            data-test="language-panel"
+            @click.stop
+          >
+            <button
+              type="button"
+              class="top-nav__language-option"
+              :class="{ 'is-active': currentLanguage === APP_LANGUAGE.zhCN }"
+              @click="updateCurrentLanguage(APP_LANGUAGE.zhCN)"
+            >
+              <span class="top-nav__language-dot" />
+              <span>{{ t('common.language.zhCN') }}</span>
+            </button>
+            <button
+              type="button"
+              class="top-nav__language-option"
+              :class="{ 'is-active': currentLanguage === APP_LANGUAGE.enUS }"
+              @click="updateCurrentLanguage(APP_LANGUAGE.enUS)"
+            >
+              <span class="top-nav__language-dot" />
+              <span>{{ t('common.language.enUS') }}</span>
+            </button>
+          </div>
+        </div>
+
         <div>
-          <el-tooltip :content="isFullscreen ? '退出全屏' : '进入全屏'" placement="bottom">
+          <el-tooltip
+            :content="
+              isFullscreen
+                ? t('topNav.tooltip.fullscreenExit')
+                : t('topNav.tooltip.fullscreenEnter')
+            "
+            placement="bottom"
+          >
             <el-button text class="top-nav__icon-button" @click="handleFullscreenToggle">
               <el-icon :size="18">
                 <component :is="isFullscreen ? ScaleToOriginal : FullScreen" />
@@ -165,7 +266,7 @@ onBeforeUnmount(() => {
         </div>
 
         <div ref="notificationWrapRef" class="top-nav__notification">
-          <el-tooltip content="消息通知" placement="bottom">
+          <el-tooltip :content="t('topNav.tooltip.notifications')" placement="bottom">
             <el-button
               text
               class="top-nav__notification-button"
@@ -196,8 +297,21 @@ onBeforeUnmount(() => {
           <el-icon><ArrowDown /></el-icon>
         </span>
         <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item command="logout">退出登录</el-dropdown-item>
+          <el-dropdown-menu class="top-nav__dropdown-menu">
+            <el-dropdown-item class="top-nav__dropdown-action" @click="handleScreenLock">
+              <span class="top-nav__dropdown-main">
+                <el-icon><Lock /></el-icon>
+                <span>{{ t('topNav.dropdown.lockScreen') }}</span>
+              </span>
+              <span class="top-nav__dropdown-shortcut">⌥ L</span>
+            </el-dropdown-item>
+            <el-dropdown-item class="top-nav__dropdown-action" command="logout">
+              <span class="top-nav__dropdown-main">
+                <el-icon><Right /></el-icon>
+                <span>{{ t('topNav.dropdown.logout') }}</span>
+              </span>
+              <span class="top-nav__dropdown-shortcut">⌥ Q</span>
+            </el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>
@@ -224,6 +338,84 @@ onBeforeUnmount(() => {
 .top-nav__left {
   min-width: 0;
   flex: 1;
+}
+
+.top-nav__horizontal-menu {
+  flex: 1;
+  min-width: 0;
+  height: 60px;
+  border-bottom: 0;
+  background: transparent;
+}
+
+.top-nav__horizontal-menu :deep(.el-menu-item),
+.top-nav__horizontal-menu :deep(.el-sub-menu__title) {
+  height: 60px;
+}
+
+.top-nav__dropdown-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.top-nav__dropdown-shortcut {
+  margin-left: 20px;
+  color: var(--el-text-color-placeholder);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.top-nav__language {
+  position: relative;
+}
+
+.top-nav__language-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 20;
+  min-width: 148px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 12px;
+  background: var(--app-card-bg-color);
+  box-shadow: 0 12px 28px rgb(15 23 42 / 0.16);
+}
+
+.top-nav__language-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  border: 0;
+  border-radius: 10px;
+  color: var(--el-text-color-secondary);
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.top-nav__language-option.is-active {
+  color: var(--el-text-color-primary);
+  background: var(--el-fill-color-light);
+}
+
+.top-nav__language-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.top-nav__language-option.is-active .top-nav__language-dot {
+  background: currentColor;
 }
 
 .top-nav__actions {

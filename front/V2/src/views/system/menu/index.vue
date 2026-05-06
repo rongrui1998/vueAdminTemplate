@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { ArrowDown, ArrowRight, FullScreen, Plus, RefreshRight } from '@element-plus/icons-vue';
+import { useI18n } from 'vue-i18n';
 import { usePermission } from '@/composables/usePermission';
 import {
   createSystemMenuApi,
@@ -30,7 +31,10 @@ type MenuTableRow = Omit<SystemMenuRecord, 'children'> & {
 };
 
 const dataSourceLabel = computed(() => getStandardDataSourceLabel());
-const sourceStatus = computed(() => (isStandardApiMode() ? '接口联调中' : 'Mock 先行中'));
+const { t } = useI18n();
+const sourceStatus = computed(() =>
+  isStandardApiMode() ? t('shared.standard.apiStatus') : t('shared.standard.mockStatus'),
+);
 const { hasPermission } = usePermission();
 const pageStatus = ref<'loading' | 'error' | 'success'>('loading');
 const errorText = ref('');
@@ -129,7 +133,7 @@ async function loadMenus() {
   } catch (error) {
     tableData.value = [];
     pageStatus.value = 'error';
-    errorText.value = error instanceof Error ? error.message : '加载菜单数据失败';
+    errorText.value = error instanceof Error ? error.message : t('systemMenu.messages.loadFailed');
   }
 }
 
@@ -155,14 +159,14 @@ function openEditDialog(row: SystemMenuRecord) {
 }
 
 async function handleDelete(row: SystemMenuRecord) {
-  const confirmed = await confirmDelete(`确认删除“${row.name}”吗？如存在下级节点会一并删除。`);
+  const confirmed = await confirmDelete(t('systemMenu.messages.deleteConfirm', { name: row.name }));
 
   if (!confirmed) {
     return;
   }
 
   await deleteSystemMenuApi(row.id);
-  ElMessage.success('菜单删除成功');
+  ElMessage.success(t('systemMenu.messages.deleteSuccess'));
   await loadMenus();
 }
 
@@ -172,10 +176,14 @@ async function handleSubmit(payload: SystemMenuPayload) {
   try {
     if (dialogMode.value === 'edit' && currentRecord.value) {
       await updateSystemMenuApi(currentRecord.value.id, payload);
-      ElMessage.success('菜单修改成功');
+      ElMessage.success(t('systemMenu.messages.updateSuccess'));
     } else {
       await createSystemMenuApi(payload);
-      ElMessage.success(dialogMode.value === 'create-child' ? '下级菜单新增成功' : '菜单新增成功');
+      ElMessage.success(
+        dialogMode.value === 'create-child'
+          ? t('systemMenu.messages.createChildSuccess')
+          : t('systemMenu.messages.createSuccess'),
+      );
     }
 
     dialogVisible.value = false;
@@ -219,6 +227,7 @@ async function handleStatusChange(row: SystemMenuRecord, value: number | string 
     parentId: row.parentId ?? null,
     type: row.type,
     name: row.name,
+    nameEn: row.nameEn || '',
     path: row.path,
     component: row.component,
     permission: row.permission || '',
@@ -231,7 +240,11 @@ async function handleStatusChange(row: SystemMenuRecord, value: number | string 
     remark: row.remark || '',
   });
 
-  ElMessage.success(`已${Number(value) === 1 ? '启用' : '停用'}菜单`);
+  ElMessage.success(
+    t('systemMenu.messages.statusChanged', {
+      status: Number(value) === 1 ? t('common.status.active') : t('common.status.inactive'),
+    }),
+  );
   await loadMenus();
 }
 
@@ -241,7 +254,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <PageContainer title="菜单管理">
+  <PageContainer :title="t('systemMenu.title')">
     <template #extra>
       <div class="menu-page__toolbar">
         <el-button
@@ -250,7 +263,7 @@ onMounted(() => {
           :disabled="!hasPermission('system:menu:create')"
           @click="openCreateRootDialog"
         >
-          新增菜单
+          {{ t('systemMenu.create') }}
         </el-button>
         <el-button circle :icon="RefreshRight" @click="loadMenus" />
         <el-button circle :icon="FullScreen" @click="toggleExpandAll" />
@@ -259,8 +272,9 @@ onMounted(() => {
 
     <el-alert type="info" :closable="false" class="menu-page__alert">
       <template #title>
-        当前数据源：{{ dataSourceLabel }}，{{ sourceStatus }}。菜单管理已支持 mock / api
-        双模式的新增、编辑、删除与树形展示。
+        {{
+          t('systemMenu.sourceDescription', { dataSource: dataSourceLabel, status: sourceStatus })
+        }}
       </template>
     </el-alert>
 
@@ -268,13 +282,13 @@ onMounted(() => {
       :data="visibleRows"
       :loading="pageStatus === 'loading'"
       :error="pageStatus === 'error'"
-      :error-text="errorText || '请稍后重试'"
-      error-title="菜单加载失败"
+      :error-text="errorText || t('shared.proTable.errorText')"
+      :error-title="t('systemMenu.messages.loadFailed')"
       row-key="id"
       table-class="menu-page__table"
       @retry="loadMenus"
     >
-      <el-table-column label="菜单名称" min-width="280">
+      <el-table-column :label="t('systemMenu.table.name')" min-width="280">
         <template #default="{ row }">
           <div class="menu-page__name-cell">
             <span
@@ -286,7 +300,9 @@ onMounted(() => {
               v-if="row.__hasChildren"
               type="button"
               class="menu-page__expand-trigger"
-              :aria-label="row.__expanded ? '收起菜单' : '展开菜单'"
+              :aria-label="
+                row.__expanded ? t('systemMenu.actions.collapse') : t('systemMenu.actions.expand')
+              "
               @click.stop="toggleRowExpand(row)"
             >
               <el-icon :size="14">
@@ -301,7 +317,7 @@ onMounted(() => {
         </template>
       </el-table-column>
 
-      <el-table-column label="类型" width="110">
+      <el-table-column :label="t('systemMenu.table.type')" width="110">
         <template #default="{ row }">
           <el-tag :type="getRowTypeTag(row)" effect="light">
             {{ getRowTypeLabel(row) }}
@@ -309,31 +325,31 @@ onMounted(() => {
         </template>
       </el-table-column>
 
-      <el-table-column label="排序" width="100" align="center">
+      <el-table-column :label="t('systemMenu.table.sort')" width="100" align="center">
         <template #default="{ row }">
           <span class="menu-page__sort-value">{{ row.sort ?? 0 }}</span>
         </template>
       </el-table-column>
 
-      <el-table-column label="权限标识" min-width="220">
+      <el-table-column :label="t('systemMenu.table.permission')" min-width="220">
         <template #default="{ row }">
           <span class="menu-page__muted">{{ row.permission || '-' }}</span>
         </template>
       </el-table-column>
 
-      <el-table-column label="路由地址" min-width="190">
+      <el-table-column :label="t('systemMenu.table.path')" min-width="190">
         <template #default="{ row }">
           <span class="menu-page__muted">{{ normalizePath(row.path) }}</span>
         </template>
       </el-table-column>
 
-      <el-table-column label="页面组件" min-width="220">
+      <el-table-column :label="t('systemMenu.table.component')" min-width="220">
         <template #default="{ row }">
           <span class="menu-page__muted">{{ row.component || '-' }}</span>
         </template>
       </el-table-column>
 
-      <el-table-column label="状态" width="120" align="center">
+      <el-table-column :label="t('systemMenu.table.status')" width="120" align="center">
         <template #default="{ row }">
           <el-switch
             :model-value="row.status ?? 1"
@@ -345,7 +361,7 @@ onMounted(() => {
         </template>
       </el-table-column>
 
-      <el-table-column label="操作" width="240" fixed="right">
+      <el-table-column :label="t('systemMenu.table.actions')" width="240" fixed="right">
         <template #default="{ row }">
           <div class="menu-page__actions">
             <el-button
@@ -354,7 +370,7 @@ onMounted(() => {
               :disabled="row.type === 'button' || !hasPermission('system:menu:create')"
               @click="openCreateChildDialog(row)"
             >
-              新增下级
+              {{ t('systemMenu.createChild') }}
             </el-button>
             <el-button
               text
@@ -362,7 +378,7 @@ onMounted(() => {
               :disabled="!hasPermission('system:menu:edit')"
               @click="openEditDialog(row)"
             >
-              修改
+              {{ t('common.action.edit') }}
             </el-button>
             <el-button
               text
@@ -370,7 +386,7 @@ onMounted(() => {
               :disabled="!hasPermission('system:menu:delete')"
               @click="handleDelete(row)"
             >
-              删除
+              {{ t('common.action.delete') }}
             </el-button>
           </div>
         </template>
@@ -378,11 +394,13 @@ onMounted(() => {
 
       <template #empty>
         <div class="menu-page__state">
-          <el-empty description="暂无菜单数据">
+          <el-empty :description="t('systemMenu.empty.description')">
             <template #default>
               <div class="menu-page__empty-actions">
-                <el-button type="primary" @click="openCreateRootDialog">新增菜单</el-button>
-                <el-button @click="loadMenus">刷新数据</el-button>
+                <el-button type="primary" @click="openCreateRootDialog">{{
+                  t('systemMenu.create')
+                }}</el-button>
+                <el-button @click="loadMenus">{{ t('systemMenu.actions.refresh') }}</el-button>
               </div>
             </template>
           </el-empty>

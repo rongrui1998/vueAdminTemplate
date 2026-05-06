@@ -100,6 +100,71 @@ test('menu list is filtered by the authenticated account roles', async () => {
   }
 });
 
+test('menu list includes page and button permission nodes for authorized roles', async () => {
+  const app = await startTestServer();
+
+  function collectPermissions(list) {
+    const permissions = new Set();
+
+    function walk(items) {
+      items.forEach((item) => {
+        if (item.permission) {
+          permissions.add(item.permission);
+        }
+
+        if (item.children?.length) {
+          walk(item.children);
+        }
+      });
+    }
+
+    walk(list);
+    return permissions;
+  }
+
+  try {
+    const loginResponse = await fetch(`${app.baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: 'admin',
+        password: '123456',
+      }),
+    });
+    const loginPayload = await loginResponse.json();
+    const token = loginPayload.data.token;
+
+    const menuResponse = await fetch(`${app.baseUrl}/api/menu/list`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const menuPayload = await menuResponse.json();
+    const permissions = collectPermissions(menuPayload.data.list);
+
+    [
+      'demo:crud:create',
+      'demo:crud:edit',
+      'demo:crud:delete',
+      'demo:permission:create',
+      'demo:permission:export',
+      'demo:permission:approve',
+      'demo:permission:delete',
+      'device:manage:create',
+      'device:manage:edit',
+      'device:manage:status',
+      'device:manage:delete',
+    ].forEach((permission) => {
+      assert.equal(permissions.has(permission), true, permission);
+    });
+  } finally {
+    await app.close();
+    await app.cleanup();
+  }
+});
+
 test('system menu endpoints support create, update, and delete', async () => {
   const app = await startTestServer();
 
@@ -127,6 +192,7 @@ test('system menu endpoints support create, update, and delete', async () => {
         parentId: 'system-root',
         type: 'menu',
         name: '部门管理',
+        nameEn: 'Departments',
         path: '/system/dept',
         component: 'system/dept/index',
         permission: 'system:dept:view',
@@ -153,6 +219,7 @@ test('system menu endpoints support create, update, and delete', async () => {
     const createdMenu = listAfterCreatePayload.data.list[1].children.find((item) => item.name === '部门管理');
 
     assert.ok(createdMenu);
+    assert.equal(createdMenu.nameEn, 'Departments');
 
     const adminMenuResponse = await fetch(`${app.baseUrl}/api/menu/list`, {
       headers: {
@@ -178,6 +245,7 @@ test('system menu endpoints support create, update, and delete', async () => {
         parentId: 'system-root',
         type: 'menu',
         name: '部门组织管理',
+        nameEn: 'Department Center',
         path: '/system/dept',
         component: 'system/dept/index',
         permission: 'system:dept:view',
@@ -194,6 +262,20 @@ test('system menu endpoints support create, update, and delete', async () => {
 
     assert.equal(updateResponse.status, 200);
     assert.equal(updatePayload.code, 200);
+
+    const listAfterUpdateResponse = await fetch(`${app.baseUrl}/api/system/menus`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const listAfterUpdatePayload = await listAfterUpdateResponse.json();
+    const updatedMenu = listAfterUpdatePayload.data.list[1].children.find(
+      (item) => item.id === createdMenu.id,
+    );
+
+    assert.ok(updatedMenu);
+    assert.equal(updatedMenu.name, '部门组织管理');
+    assert.equal(updatedMenu.nameEn, 'Department Center');
 
     const deleteResponse = await fetch(`${app.baseUrl}/api/system/menus/${createdMenu.id}`, {
       method: 'DELETE',
@@ -549,6 +631,62 @@ test('device endpoints support listing, create, update, status, and delete', asy
   }
 });
 
+test('device action endpoints stay accessible without device-specific permissions', async () => {
+  const app = await startTestServer();
+
+  try {
+    const loginResponse = await fetch(`${app.baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: 'editor',
+        password: '123456',
+      }),
+    });
+    const loginPayload = await loginResponse.json();
+    const token = loginPayload.data.token;
+
+    const listResponse = await fetch(`${app.baseUrl}/api/device/list`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        pageNum: 1,
+        pageSize: 1,
+      }),
+    });
+    const listPayload = await listResponse.json();
+
+    assert.equal(listResponse.status, 200);
+    assert.equal(listPayload.code, 200);
+
+    const createResponse = await fetch(`${app.baseUrl}/api/device/add`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        deviceId: 'DV-NO-PERMISSION',
+        deviceName: '无权限设备',
+        deviceType: '摄像头',
+      }),
+    });
+    const createPayload = await createResponse.json();
+
+    assert.equal(createResponse.status, 200);
+    assert.equal(createPayload.code, 200);
+    assert.equal(createPayload.data.deviceId, 'DV-NO-PERMISSION');
+  } finally {
+    await app.close();
+    await app.cleanup();
+  }
+});
+
 test('demo user endpoints support CRUD and pagination', async () => {
   const app = await startTestServer();
 
@@ -739,6 +877,87 @@ test('business template endpoints support listing, create, detail, update, and d
 
     assert.equal(deleteResponse.status, 200);
     assert.equal(deletePayload.code, 200);
+  } finally {
+    await app.close();
+    await app.cleanup();
+  }
+});
+
+test('business template endpoints enforce action permissions for customer accounts', async () => {
+  const app = await startTestServer();
+
+  try {
+    const loginResponse = await fetch(`${app.baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: 'rongrui',
+        password: '123456',
+      }),
+    });
+    const loginPayload = await loginResponse.json();
+    const token = loginPayload.data.token;
+
+    const listResponse = await fetch(`${app.baseUrl}/api/demo/business-templates`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const listPayload = await listResponse.json();
+
+    assert.equal(listResponse.status, 200);
+    assert.equal(listPayload.code, 200);
+
+    const createResponse = await fetch(`${app.baseUrl}/api/demo/business-templates`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        name: '客服新建模板',
+        owner: '客服中心',
+        scene: '客服场景',
+        status: 1,
+        remark: '不应允许创建',
+      }),
+    });
+    const createPayload = await createResponse.json();
+
+    assert.equal(createResponse.status, 403);
+    assert.equal(createPayload.code, 403);
+
+    const updateResponse = await fetch(`${app.baseUrl}/api/demo/business-templates/tpl-1`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        name: '客户资料维护',
+        owner: '业务中台',
+        scene: '基础资料',
+        status: 0,
+        remark: '不应允许修改',
+      }),
+    });
+    const updatePayload = await updateResponse.json();
+
+    assert.equal(updateResponse.status, 403);
+    assert.equal(updatePayload.code, 403);
+
+    const deleteResponse = await fetch(`${app.baseUrl}/api/demo/business-templates/tpl-1`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const deletePayload = await deleteResponse.json();
+
+    assert.equal(deleteResponse.status, 403);
+    assert.equal(deletePayload.code, 403);
   } finally {
     await app.close();
     await app.cleanup();

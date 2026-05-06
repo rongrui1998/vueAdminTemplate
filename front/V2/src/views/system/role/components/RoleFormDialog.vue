@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import type { FormInstance, FormRules } from 'element-plus';
+import { useI18n } from 'vue-i18n';
 import ModalForm from '@/components/ModalForm/index.vue';
 import type { SystemRolePayload, SystemRoleRecord } from '@/types/system-role';
 
@@ -16,6 +17,7 @@ const emit = defineEmits<{
 }>();
 
 const formRef = ref<FormInstance>();
+const { t } = useI18n();
 const formModel = reactive<SystemRolePayload>({
   code: '',
   name: '',
@@ -24,11 +26,17 @@ const formModel = reactive<SystemRolePayload>({
   remark: '',
 });
 
-const dialogTitle = computed(() => (props.record ? '修改角色' : '新增角色'));
+const dialogTitle = computed(() =>
+  props.record ? t('systemRole.form.editTitle') : t('systemRole.form.createTitle'),
+);
 
 const rules: FormRules<SystemRolePayload> = {
-  name: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
-  code: [{ required: true, message: '请输入角色编码', trigger: 'blur' }],
+  name: [
+    { required: true, message: t('systemRole.form.validation.nameRequired'), trigger: 'blur' },
+  ],
+  code: [
+    { required: true, message: t('systemRole.form.validation.codeRequired'), trigger: 'blur' },
+  ],
 };
 
 function resetFormModel() {
@@ -73,32 +81,37 @@ async function submitForm() {
     :title="dialogTitle"
     width="560px"
     :submitting="submitting"
-    confirm-text="保存"
+    :confirm-text="t('common.action.save')"
     @confirm="submitForm"
     @update:visible="emit('update:visible', $event)"
   >
     <el-form ref="formRef" :model="formModel" :rules="rules" label-width="96px">
-      <el-form-item label="角色名称" prop="name">
-        <el-input v-model="formModel.name" placeholder="请输入角色名称" />
+      <el-form-item :label="t('systemRole.form.name')" prop="name">
+        <el-input v-model="formModel.name" :placeholder="t('systemRole.form.placeholders.name')" />
       </el-form-item>
 
-      <el-form-item label="角色编码" prop="code">
-        <el-input v-model="formModel.code" placeholder="请输入角色编码，例如 admin" />
+      <el-form-item :label="t('systemRole.form.code')" prop="code">
+        <el-input v-model="formModel.code" :placeholder="t('systemRole.form.placeholders.code')" />
       </el-form-item>
 
-      <el-form-item label="排序">
+      <el-form-item :label="t('systemRole.form.sort')">
         <el-input-number v-model="formModel.sort" :min="1" :max="999" />
       </el-form-item>
 
-      <el-form-item label="状态">
+      <el-form-item :label="t('systemRole.form.status')">
         <el-radio-group v-model="formModel.status">
-          <el-radio-button :value="1">启用</el-radio-button>
-          <el-radio-button :value="0">停用</el-radio-button>
+          <el-radio-button :value="1">{{ t('common.status.active') }}</el-radio-button>
+          <el-radio-button :value="0">{{ t('common.status.inactive') }}</el-radio-button>
         </el-radio-group>
       </el-form-item>
 
-      <el-form-item label="备注">
-        <el-input v-model="formModel.remark" type="textarea" :rows="3" placeholder="请输入备注" />
+      <el-form-item :label="t('systemRole.form.remark')">
+        <el-input
+          v-model="formModel.remark"
+          type="textarea"
+          :rows="3"
+          :placeholder="t('systemRole.form.placeholders.remark')"
+        />
       </el-form-item>
     </el-form>
   </ModalForm>

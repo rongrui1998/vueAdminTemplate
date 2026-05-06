@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { logoutApi, loginApi } from '@/api/auth';
 import { getUserInfoApi } from '@/api/user';
 import { STORAGE_KEYS } from '@/constants/app';
+import { useAppStore } from '@/store/modules/app';
 import type { LoginParams } from '@/types/auth';
 import type { UserInfo } from '@/types/user';
 import { clearAccessToken, getAccessToken, setAccessToken } from '@/utils/auth';
@@ -69,6 +70,10 @@ export const useAuthStore = defineStore('auth', {
       this.clearAuth();
     },
     clearAuth() {
+      const appStore = useAppStore();
+
+      appStore.setScreenLockPassword('');
+      appStore.setScreenLocked(false);
       this.token = '';
       this.userInfo = emptyUserInfo;
       this.userInfoLoaded = false;

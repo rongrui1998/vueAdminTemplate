@@ -1,5 +1,6 @@
 import { mount } from '@vue/test-utils';
 import ElementPlus from 'element-plus';
+import { i18n, setI18nLanguage } from '@/plugins/i18n';
 import ModalForm from '@/components/ModalForm/index.vue';
 
 const dialogStub = {
@@ -10,6 +11,8 @@ const dialogStub = {
 
 describe('ModalForm', () => {
   it('renders form actions and emits confirm or close events', async () => {
+    setI18nLanguage('zh-CN');
+
     const wrapper = mount(ModalForm, {
       props: {
         visible: true,
@@ -19,7 +22,7 @@ describe('ModalForm', () => {
         default: '<div>表单内容</div>',
       },
       global: {
-        plugins: [ElementPlus],
+        plugins: [ElementPlus, i18n],
         stubs: {
           ElDialog: dialogStub,
         },

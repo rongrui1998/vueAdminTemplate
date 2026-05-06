@@ -2,6 +2,7 @@ import { nextTick } from 'vue';
 import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import TagViews from '@/layout/components/TagViews.vue';
+import { useAppStore } from '@/store/modules/app';
 import { useTabsStore } from '@/store/modules/tabs';
 
 const routerPushMock = vi.fn();
@@ -30,10 +31,19 @@ const scrollbarStub = {
 };
 
 const tagStub = {
-  props: ['closable', 'effect'],
-  emits: ['click', 'close', 'contextmenu'],
+  props: ['closable', 'effect', 'draggable'],
+  emits: ['click', 'close', 'contextmenu', 'dragstart', 'dragover', 'drop', 'dragend'],
   template: `
-    <div class="tag-stub" @click="$emit('click')" @contextmenu.prevent="$emit('contextmenu', $event)">
+    <div
+      class="tag-stub"
+      :draggable="draggable"
+      @click="$emit('click')"
+      @contextmenu.prevent="$emit('contextmenu', $event)"
+      @dragstart="$emit('dragstart', $event)"
+      @dragover="$emit('dragover', $event)"
+      @drop="$emit('drop', $event)"
+      @dragend="$emit('dragend')"
+    >
       <span class="tag-stub__label"><slot /></span>
       <button v-if="closable" class="tag-stub__close" @click.stop="$emit('close')">x</button>
     </div>
@@ -88,5 +98,94 @@ describe('TagViews', () => {
     expect(actions[1].attributes('disabled')).toBeDefined();
 
     wrapper.unmount();
+  });
+
+  it('renders chrome-style draggable tabs and reorders them on drop', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+
+    const tabsStore = useTabsStore();
+    tabsStore.visitedViews = [
+      {
+        title: '首页',
+        path: '/dashboard',
+        fullPath: '/dashboard',
+        routeName: 'DashboardRoute',
+        affix: true,
+      },
+      {
+        title: '菜单管理',
+        path: '/system/menu',
+        fullPath: '/system/menu',
+        routeName: 'route_system-menu',
+        affix: false,
+      },
+      {
+        title: '评级模式',
+        path: '/demo/rating',
+        fullPath: '/demo/rating',
+        routeName: 'route_demo-rating',
+        affix: false,
+      },
+    ];
+
+    const wrapper = mount(TagViews, {
+      global: {
+        plugins: [pinia],
+        stubs: {
+          ElScrollbar: scrollbarStub,
+          ElTag: tagStub,
+          teleport: true,
+        },
+      },
+    });
+
+    expect(wrapper.find('.tag-views__item').classes()).toContain('tag-views__item--segment');
+    expect(wrapper.findAll('.tag-stub')[1].attributes('draggable')).toBe('true');
+
+    await wrapper.findAll('.tag-stub')[2].trigger('dragstart');
+    await wrapper.findAll('.tag-stub')[1].trigger('drop');
+
+    expect(tabsStore.visitedViews.map((tab) => tab.fullPath)).toEqual([
+      '/dashboard',
+      '/demo/rating',
+      '/system/menu',
+    ]);
+
+    wrapper.unmount();
+  });
+
+  it('renders english tab titles when the current language is english', () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+
+    const appStore = useAppStore();
+    appStore.setCurrentLanguage('en-US');
+
+    const tabsStore = useTabsStore();
+    tabsStore.visitedViews = [
+      {
+        title: '首页',
+        titleEn: 'Dashboard',
+        path: '/dashboard',
+        fullPath: '/dashboard',
+        routeName: 'DashboardRoute',
+        affix: true,
+      },
+    ];
+
+    const wrapper = mount(TagViews, {
+      global: {
+        plugins: [pinia],
+        stubs: {
+          ElScrollbar: scrollbarStub,
+          ElTag: tagStub,
+          teleport: true,
+        },
+      },
+    });
+
+    expect(wrapper.text()).toContain('Dashboard');
+    expect(wrapper.text()).not.toContain('首页');
   });
 });

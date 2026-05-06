@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { ArrowLeft, House } from '@element-plus/icons-vue';
 import { DASHBOARD_PATH } from '@/constants/route';
 
 const router = useRouter();
+const { t } = useI18n();
 
 function goDashboard() {
   router.push(DASHBOARD_PATH);
@@ -24,31 +26,31 @@ function goBack() {
     <div class="forbidden-page__shell">
       <section class="forbidden-page__content">
         <div class="forbidden-page__code">403</div>
-        <div class="forbidden-page__badge">Permission Locked</div>
-        <h1 class="forbidden-page__title">当前账号没有访问权限</h1>
+        <div class="forbidden-page__badge">{{ t('error403.badge') }}</div>
+        <h1 class="forbidden-page__title">{{ t('error403.title') }}</h1>
         <p class="forbidden-page__desc">
-          这个页面已经接入权限校验。当前账号暂未开通对应访问能力，你可以返回工作台继续操作，或联系管理员补齐权限后再试。
+          {{ t('error403.description') }}
         </p>
 
         <div class="forbidden-page__actions">
           <el-button type="primary" size="large" @click="goDashboard">
             <el-icon><House /></el-icon>
-            返回首页
+            {{ t('error403.backHome') }}
           </el-button>
           <el-button size="large" @click="goBack">
             <el-icon><ArrowLeft /></el-icon>
-            返回上一页
+            {{ t('error403.backPrevious') }}
           </el-button>
         </div>
 
         <div class="forbidden-page__tips">
           <div class="forbidden-page__tip">
             <span class="forbidden-page__tip-dot forbidden-page__tip-dot--blue" />
-            页面存在，但当前账号不可访问
+            {{ t('error403.tips.exists') }}
           </div>
           <div class="forbidden-page__tip">
             <span class="forbidden-page__tip-dot forbidden-page__tip-dot--green" />
-            开通后无需换地址，可直接再次访问
+            {{ t('error403.tips.retry') }}
           </div>
         </div>
       </section>
@@ -58,9 +60,15 @@ function goBack() {
         <div class="forbidden-page__halo forbidden-page__halo--secondary" />
 
         <div class="permission-scene">
-          <div class="permission-scene__pill permission-scene__pill--top">Access denied</div>
-          <div class="permission-scene__pill permission-scene__pill--right">Role mismatch</div>
-          <div class="permission-scene__pill permission-scene__pill--bottom">Need approval</div>
+          <div class="permission-scene__pill permission-scene__pill--top">
+            {{ t('error403.pills.denied') }}
+          </div>
+          <div class="permission-scene__pill permission-scene__pill--right">
+            {{ t('error403.pills.mismatch') }}
+          </div>
+          <div class="permission-scene__pill permission-scene__pill--bottom">
+            {{ t('error403.pills.approval') }}
+          </div>
 
           <div class="permission-scene__card">
             <div class="permission-scene__shield">

@@ -1,23 +1,25 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { DASHBOARD_PATH } from '@/constants/route';
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 </script>
 
 <template>
   <div class="route-missing-page">
     <section class="route-missing-page__card">
-      <div class="route-missing-page__badge">Dynamic Route Guard</div>
-      <h1>页面配置异常</h1>
-      <p>当前菜单绑定的页面组件不存在，请检查菜单 `component` 字段是否对应真实视图文件。</p>
+      <div class="route-missing-page__badge">{{ t('routeMissing.badge') }}</div>
+      <h1>{{ t('routeMissing.title') }}</h1>
+      <p>{{ t('routeMissing.description') }}</p>
       <div class="route-missing-page__path">
-        {{ route.meta.component || '未提供组件路径' }}
+        {{ route.meta.component || t('routeMissing.emptyComponent') }}
       </div>
-      <el-button type="primary" size="large" @click="router.push(DASHBOARD_PATH)"
-        >返回首页</el-button
-      >
+      <el-button type="primary" size="large" @click="router.push(DASHBOARD_PATH)">
+        {{ t('routeMissing.backHome') }}
+      </el-button>
     </section>
   </div>
 </template>

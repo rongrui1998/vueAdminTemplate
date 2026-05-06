@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils';
 import ElementPlus from 'element-plus';
 import { createPinia, setActivePinia } from 'pinia';
+import { i18n, setI18nLanguage } from '@/plugins/i18n';
 import { useAuthStore } from '@/store/modules/auth';
 import MenuManagementPage from '@/views/system/menu/index.vue';
 
@@ -76,6 +77,10 @@ const dialogStub = {
 };
 
 describe('system menu page', () => {
+  beforeEach(() => {
+    setI18nLanguage('zh-CN');
+  });
+
   it('renders a real management toolbar and tree table', async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
@@ -99,7 +104,7 @@ describe('system menu page', () => {
     const wrapper = mount(MenuManagementPage, {
       attachTo: document.body,
       global: {
-        plugins: [ElementPlus, pinia],
+        plugins: [ElementPlus, pinia, i18n],
         stubs: {
           ElDialog: dialogStub,
           teleport: true,
@@ -121,7 +126,7 @@ describe('system menu page', () => {
     expect(wrapper.text()).toContain('状态');
     expect(wrapper.text()).toContain('操作');
     expect(wrapper.text()).toContain('新增下级');
-    expect(wrapper.text()).toContain('修改');
+    expect(wrapper.text()).toContain('编辑');
     expect(wrapper.text()).toContain('删除');
     expect(wrapper.text()).toContain('系统管理');
     expect(wrapper.find('.menu-page__expand-trigger').exists()).toBe(true);
@@ -156,7 +161,7 @@ describe('system menu page', () => {
     const wrapper = mount(MenuManagementPage, {
       attachTo: document.body,
       global: {
-        plugins: [ElementPlus, pinia],
+        plugins: [ElementPlus, pinia, i18n],
         stubs: {
           ElDialog: dialogStub,
           teleport: true,
@@ -176,5 +181,58 @@ describe('system menu page', () => {
     expect(wrapper.text()).toContain('新增菜单');
     expect(wrapper.text()).toContain('菜单类型');
     expect(wrapper.text()).toContain('菜单标题');
+    expect(wrapper.text()).toContain('英文名称');
+  });
+
+  it('renders English copy for the menu page and dialog', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    setI18nLanguage('en-US');
+
+    const authStore = useAuthStore();
+    authStore.userInfoLoaded = true;
+    authStore.userInfo = {
+      id: 'u-1',
+      username: 'admin',
+      nickname: 'System Admin',
+      avatar: '',
+      roles: ['admin'],
+      permissions: [
+        'system:menu:view',
+        'system:menu:create',
+        'system:menu:edit',
+        'system:menu:delete',
+      ],
+    };
+
+    const wrapper = mount(MenuManagementPage, {
+      attachTo: document.body,
+      global: {
+        plugins: [ElementPlus, pinia, i18n],
+        stubs: {
+          ElDialog: dialogStub,
+          teleport: true,
+        },
+      },
+    });
+
+    await waitForPage(wrapper);
+
+    expect(wrapper.text()).toContain('Menu Management');
+    expect(wrapper.text()).toContain('Create Menu');
+    expect(wrapper.text()).toContain('Menu Name');
+    expect(wrapper.text()).toContain('Route Path');
+
+    const createButton = wrapper
+      .findAll('button')
+      .find((item) => item.text().includes('Create Menu'));
+    expect(createButton).toBeTruthy();
+    await createButton!.trigger('click');
+    await wrapper.vm.$nextTick();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.text()).toContain('Create Menu');
+    expect(wrapper.text()).toContain('Menu Type');
+    expect(wrapper.text()).toContain('English Name');
   });
 });

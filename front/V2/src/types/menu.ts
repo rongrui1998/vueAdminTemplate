@@ -4,6 +4,7 @@ export interface BackendMenuItem {
   id: string;
   parentId?: string | null;
   name: string;
+  nameEn?: string;
   path: string;
   component: string;
   icon?: string;

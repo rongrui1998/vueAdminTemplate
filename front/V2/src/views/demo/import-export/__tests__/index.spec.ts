@@ -1,5 +1,6 @@
 import { mount } from '@vue/test-utils';
 import ElementPlus from 'element-plus';
+import { i18n, setI18nLanguage } from '@/plugins/i18n';
 import ImportExportPage from '@/views/demo/import-export/index.vue';
 
 const apiMocks = vi.hoisted(() => ({
@@ -65,10 +66,12 @@ async function waitForPage(wrapper: ReturnType<typeof mount>) {
 
 describe('import export page', () => {
   it('previews csv through api and confirms valid rows', async () => {
+    setI18nLanguage('zh-CN');
+
     const wrapper = mount(ImportExportPage, {
       attachTo: document.body,
       global: {
-        plugins: [ElementPlus],
+        plugins: [ElementPlus, i18n],
         stubs: {
           DrawerForm: drawerStub,
           teleport: true,

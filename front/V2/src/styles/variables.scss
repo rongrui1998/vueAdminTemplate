@@ -3,3 +3,15 @@
   --app-card-bg-color: #ffffff;
   --app-card-shadow: 0 8px 24px rgb(15 23 42 / 6%);
 }
+
+html.app-gray-mode {
+  filter: grayscale(1);
+}
+
+html.app-color-weak-mode {
+  filter: hue-rotate(45deg);
+}
+
+html.app-gray-mode.app-color-weak-mode {
+  filter: grayscale(1) hue-rotate(45deg);
+}

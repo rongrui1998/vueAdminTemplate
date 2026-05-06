@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useAppStore } from '@/store/modules/app';
+import { getRouteTitle } from '@/utils/route';
 
 const route = useRoute();
 const router = useRouter();
+const appStore = useAppStore();
 
 const breadcrumbItems = computed(() =>
   route.matched.filter(
@@ -25,10 +28,10 @@ function navigateTo(path: string) {
         v-if="index === breadcrumbItems.length - 1 || !item.path"
         class="breadcrumb-nav__current"
       >
-        {{ item.meta.title }}
+        {{ getRouteTitle(item, appStore.currentLanguage) }}
       </span>
       <span v-else class="breadcrumb-nav__link" @click="navigateTo(item.path)">
-        {{ item.meta.title }}
+        {{ getRouteTitle(item, appStore.currentLanguage) }}
       </span>
     </el-breadcrumb-item>
   </el-breadcrumb>

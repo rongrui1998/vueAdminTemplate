@@ -5,8 +5,22 @@ import { DASHBOARD_PATH, FORBIDDEN_PATH, LOGIN_PATH } from '@/constants/route';
 import { menuData } from '@/mock/data/menus';
 import { setupRouterGuards } from '@/router/guards';
 import { staticRoutes } from '@/router/static-routes';
+import { useAppStore } from '@/store/modules/app';
 import { useAuthStore } from '@/store/modules/auth';
 import { usePermissionStore } from '@/store/modules/permission';
+import { APP_TITLE } from '@/constants/app';
+
+vi.mock('nprogress', () => ({
+  default: {
+    configure: vi.fn(),
+    start: vi.fn(),
+    done: vi.fn(),
+  },
+}));
+
+const nprogressModule = await import('nprogress');
+const nprogressStartMock = vi.mocked(nprogressModule.default.start);
+const nprogressDoneMock = vi.mocked(nprogressModule.default.done);
 
 vi.mock('@/api/menu', () => ({
   getMenuListApi: vi.fn(async () => ({
@@ -35,6 +49,8 @@ function createMenuList(list = menuData) {
 describe('router guards', () => {
   beforeEach(() => {
     vi.mocked(getMenuListApi).mockResolvedValue(createMenuList());
+    nprogressStartMock.mockClear();
+    nprogressDoneMock.mockClear();
   });
 
   it('redirects unauthenticated users to login', async () => {
@@ -173,5 +189,70 @@ describe('router guards', () => {
     await router.push('/system/menu');
 
     expect(router.currentRoute.value.path).toBe(FORBIDDEN_PATH);
+  });
+
+  it('does not start the page transition progress bar when disabled', async () => {
+    setActivePinia(createPinia());
+
+    const appStore = useAppStore();
+    appStore.setPageTransitionProgressEnabled(false);
+
+    const router = createTestRouter();
+
+    await router.push('/login');
+
+    expect(nprogressStartMock).not.toHaveBeenCalled();
+    expect(nprogressDoneMock).not.toHaveBeenCalled();
+  });
+
+  it('activates page transition animation after a successful navigation when enabled', async () => {
+    setActivePinia(createPinia());
+
+    const appStore = useAppStore();
+    appStore.setPageTransitionAnimationEnabled(true);
+
+    const router = createTestRouter();
+
+    await router.push('/login');
+
+    expect(appStore.pageTransitionAnimationActive).toBe(true);
+  });
+
+  it('uses the English route title for the document title when current language is English', async () => {
+    setActivePinia(createPinia());
+
+    const appStore = useAppStore();
+    appStore.setCurrentLanguage('en-US');
+
+    const router = createTestRouter();
+    router.addRoute('RootLayout', {
+      path: 'english-title',
+      name: 'EnglishTitleRoute',
+      component: { template: '<div />' },
+      meta: {
+        title: '中文标题',
+        titleEn: 'English Title',
+        permission: 'dashboard:view',
+      },
+    });
+
+    const authStore = useAuthStore();
+    authStore.token = 'mock-access-token-admin';
+    authStore.userInfoLoaded = true;
+    authStore.userInfo = {
+      id: 'u-1',
+      username: 'admin',
+      nickname: '系统管理员',
+      avatar: '',
+      roles: ['admin'],
+      permissions: ['dashboard:view'],
+    };
+
+    const permissionStore = usePermissionStore();
+    permissionStore.routeLoaded = true;
+
+    await router.push('/english-title');
+
+    expect(document.title).toBe(`English Title - ${APP_TITLE}`);
   });
 });

@@ -1,21 +1,28 @@
 import NProgress from 'nprogress';
 import type { Router } from 'vue-router';
 import { DASHBOARD_PATH, FORBIDDEN_PATH, LOGIN_PATH } from '@/constants/route';
+import { useAppStore } from '@/store/modules/app';
 import { useAuthStore } from '@/store/modules/auth';
 import { usePermissionStore } from '@/store/modules/permission';
 import { useTabsStore } from '@/store/modules/tabs';
 import { addDynamicRoutes } from '@/router/helper-runtime';
-import { getPageTitle } from '@/utils/route';
+import { getPageTitle, getRouteTitle } from '@/utils/route';
 
 NProgress.configure({ showSpinner: false });
 
 export function setupRouterGuards(router: Router) {
   router.beforeEach(async (to, _from, next) => {
-    NProgress.start();
-
+    const appStore = useAppStore();
     const authStore = useAuthStore();
     const permissionStore = usePermissionStore();
     const tabsStore = useTabsStore();
+
+    appStore.setPageTransitionLoading(appStore.pageTransitionLoadingEnabled);
+    appStore.setPageTransitionAnimationActive(false);
+
+    if (appStore.pageTransitionProgressEnabled) {
+      NProgress.start();
+    }
 
     if (!authStore.isLoggedIn) {
       if (to.path === LOGIN_PATH) {
@@ -71,17 +78,33 @@ export function setupRouterGuards(router: Router) {
   });
 
   router.afterEach((to) => {
-    document.title = getPageTitle(typeof to.meta.title === 'string' ? to.meta.title : '');
+    const appStore = useAppStore();
+    document.title = getPageTitle(getRouteTitle(to, appStore.currentLanguage));
 
     if (!to.meta.hidden && to.name) {
       const tabsStore = useTabsStore();
       tabsStore.addTabFromRoute(to);
     }
 
-    NProgress.done();
+    if (appStore.pageTransitionProgressEnabled) {
+      NProgress.done();
+    }
+
+    appStore.setPageTransitionLoading(false);
+
+    if (appStore.pageTransitionAnimationEnabled) {
+      appStore.setPageTransitionAnimationActive(true);
+    }
   });
 
   router.onError(() => {
-    NProgress.done();
+    const appStore = useAppStore();
+
+    if (appStore.pageTransitionProgressEnabled) {
+      NProgress.done();
+    }
+
+    appStore.setPageTransitionLoading(false);
+    appStore.setPageTransitionAnimationActive(false);
   });
 }

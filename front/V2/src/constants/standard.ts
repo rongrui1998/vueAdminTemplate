@@ -1,3 +1,5 @@
+import { i18n } from '@/plugins/i18n';
+
 export const STANDARD_DATA_SOURCE = {
   mock: 'mock',
   api: 'api',
@@ -16,5 +18,7 @@ export function isStandardApiMode(source = import.meta.env.VITE_STANDARD_DATA_SO
 }
 
 export function getStandardDataSourceLabel(source = import.meta.env.VITE_STANDARD_DATA_SOURCE) {
-  return resolveStandardDataSource(source) === STANDARD_DATA_SOURCE.api ? '真实接口' : '本地 Mock';
+  return resolveStandardDataSource(source) === STANDARD_DATA_SOURCE.api
+    ? i18n.global.t('shared.standard.api')
+    : i18n.global.t('shared.standard.mock');
 }

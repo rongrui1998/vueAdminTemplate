@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Plus, RefreshRight } from '@element-plus/icons-vue';
+import { useI18n } from 'vue-i18n';
 import { getSystemRolesApi } from '@/api/system-role';
 import {
   createSystemUserApi,
@@ -21,7 +22,10 @@ import { confirmAction, confirmDelete } from '@/utils/confirm';
 import UserFormDialog from './components/UserFormDialog.vue';
 
 const dataSourceLabel = computed(() => getStandardDataSourceLabel());
-const sourceStatus = computed(() => (isStandardApiMode() ? '接口联调中' : 'Mock 先行中'));
+const { t } = useI18n();
+const sourceStatus = computed(() =>
+  isStandardApiMode() ? t('shared.standard.apiStatus') : t('shared.standard.mockStatus'),
+);
 const { hasPermission } = usePermission();
 const pageStatus = ref<'loading' | 'error' | 'success'>('loading');
 const errorText = ref('');
@@ -35,9 +39,9 @@ const queryForm = reactive({
 });
 const searchFields: SearchFormField[] = [
   {
-    label: '关键词',
+    label: t('systemUser.fields.keyword'),
     prop: 'keyword',
-    placeholder: '登录账号 / 用户昵称',
+    placeholder: t('systemUser.fields.keywordPlaceholder'),
   },
 ];
 
@@ -54,7 +58,7 @@ async function loadUsers() {
   } catch (error) {
     tableData.value = [];
     pageStatus.value = 'error';
-    errorText.value = error instanceof Error ? error.message : '加载用户数据失败';
+    errorText.value = error instanceof Error ? error.message : t('systemUser.messages.loadFailed');
   }
 }
 
@@ -94,10 +98,10 @@ async function handleSubmit(payload: SystemUserPayload) {
   try {
     if (currentRecord.value) {
       await updateSystemUserApi(currentRecord.value.id, payload);
-      ElMessage.success('用户修改成功');
+      ElMessage.success(t('systemUser.messages.updateSuccess'));
     } else {
       await createSystemUserApi(payload);
-      ElMessage.success('用户新增成功');
+      ElMessage.success(t('systemUser.messages.createSuccess'));
     }
 
     formVisible.value = false;
@@ -116,15 +120,19 @@ async function handleStatusChange(row: SystemUserRecord, value: number | string 
     remark: row.remark || '',
   });
 
-  ElMessage.success(`已${Number(value) === 1 ? '启用' : '停用'}用户`);
+  ElMessage.success(
+    t('systemUser.messages.statusChanged', {
+      status: Number(value) === 1 ? t('common.status.active') : t('common.status.inactive'),
+    }),
+  );
   await loadUsers();
 }
 
 async function handleResetPassword(row: SystemUserRecord) {
   const confirmed = await confirmAction({
-    title: '重置密码',
-    message: `确认将“${row.nickname}”的密码重置为 123456 吗？`,
-    confirmButtonText: '确认重置',
+    title: t('systemUser.dialog.resetPasswordTitle'),
+    message: t('systemUser.messages.resetPasswordConfirm', { name: row.nickname }),
+    confirmButtonText: t('systemUser.dialog.resetPasswordConfirm'),
   });
 
   if (!confirmed) {
@@ -132,18 +140,20 @@ async function handleResetPassword(row: SystemUserRecord) {
   }
 
   await resetSystemUserPasswordApi(row.id, { password: '123456' });
-  ElMessage.success('密码已重置为 123456');
+  ElMessage.success(t('systemUser.messages.passwordResetSuccess'));
 }
 
 async function handleDelete(row: SystemUserRecord) {
-  const confirmed = await confirmDelete(`确认删除“${row.nickname}”吗？`);
+  const confirmed = await confirmDelete(
+    t('systemUser.messages.deleteConfirm', { name: row.nickname }),
+  );
 
   if (!confirmed) {
     return;
   }
 
   await deleteSystemUserApi(row.id);
-  ElMessage.success('用户删除成功');
+  ElMessage.success(t('systemUser.messages.deleteSuccess'));
   await loadUsers();
 }
 
@@ -153,7 +163,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <PageContainer title="用户管理">
+  <PageContainer :title="t('systemUser.title')">
     <template #extra>
       <div class="user-page__toolbar">
         <el-button
@@ -162,7 +172,7 @@ onMounted(() => {
           :disabled="!hasPermission('system:user:create')"
           @click="openCreateDialog"
         >
-          新增用户
+          {{ t('systemUser.create') }}
         </el-button>
         <el-button circle :icon="RefreshRight" @click="loadUsers" />
       </div>
@@ -170,8 +180,15 @@ onMounted(() => {
 
     <el-alert type="info" :closable="false" class="user-page__alert">
       <template #title>
-        当前数据源：{{ dataSourceLabel }}，{{ sourceStatus }}。用户管理已支持 mock / api
-        双模式列表、角色绑定和账号维护。
+        {{
+          t('shared.standard.mock') === dataSourceLabel
+            ? t('shared.standard.mock')
+            : dataSourceLabel
+        }}
+        <span style="display: none">{{ sourceStatus }}</span>
+        {{
+          t('systemUser.sourceDescription', { dataSource: dataSourceLabel, status: sourceStatus })
+        }}
       </template>
     </el-alert>
 
@@ -187,23 +204,25 @@ onMounted(() => {
       :data="tableData"
       :loading="pageStatus === 'loading'"
       :error="pageStatus === 'error'"
-      :error-text="errorText || '请稍后重试'"
-      error-title="用户加载失败"
+      :error-text="errorText || t('shared.proTable.errorText')"
+      :error-title="t('systemUser.messages.loadFailed')"
       row-key="id"
       @retry="loadUsers"
     >
-      <el-table-column label="登录账号" prop="username" min-width="140" />
+      <el-table-column :label="t('systemUser.table.username')" prop="username" min-width="140" />
 
-      <el-table-column label="用户昵称" min-width="150">
+      <el-table-column :label="t('systemUser.table.nickname')" min-width="150">
         <template #default="{ row }">
           <div class="user-page__name">
             <span>{{ row.nickname }}</span>
-            <el-tag v-if="row.username === 'admin'" size="small" effect="plain">内置</el-tag>
+            <el-tag v-if="row.username === 'admin'" size="small" effect="plain">{{
+              t('systemUser.table.builtIn')
+            }}</el-tag>
           </div>
         </template>
       </el-table-column>
 
-      <el-table-column label="绑定角色" min-width="200">
+      <el-table-column :label="t('systemUser.table.roleNames')" min-width="200">
         <template #default="{ row }">
           <div class="user-page__roles">
             <el-tag v-for="roleName in row.roleNames" :key="roleName" effect="light">
@@ -213,7 +232,7 @@ onMounted(() => {
         </template>
       </el-table-column>
 
-      <el-table-column label="状态" width="120" align="center">
+      <el-table-column :label="t('systemUser.table.status')" width="120" align="center">
         <template #default="{ row }">
           <el-switch
             :model-value="row.status"
@@ -225,11 +244,15 @@ onMounted(() => {
         </template>
       </el-table-column>
 
-      <el-table-column label="最后登录" prop="lastLoginAt" min-width="170" />
+      <el-table-column
+        :label="t('systemUser.table.lastLoginAt')"
+        prop="lastLoginAt"
+        min-width="170"
+      />
 
-      <el-table-column label="创建时间" prop="createdAt" min-width="170" />
+      <el-table-column :label="t('systemUser.table.createdAt')" prop="createdAt" min-width="170" />
 
-      <el-table-column label="操作" width="300" fixed="right">
+      <el-table-column :label="t('systemUser.table.actions')" width="300" fixed="right">
         <template #default="{ row }">
           <div class="user-page__actions">
             <el-button
@@ -238,7 +261,7 @@ onMounted(() => {
               :disabled="!hasPermission('system:user:reset')"
               @click="handleResetPassword(row)"
             >
-              重置密码
+              {{ t('systemUser.actions.resetPassword') }}
             </el-button>
             <el-button
               text
@@ -246,7 +269,7 @@ onMounted(() => {
               :disabled="!hasPermission('system:user:edit')"
               @click="openEditDialog(row)"
             >
-              修改
+              {{ t('common.action.edit') }}
             </el-button>
             <el-button
               text
@@ -254,7 +277,7 @@ onMounted(() => {
               :disabled="row.username === 'admin' || !hasPermission('system:user:delete')"
               @click="handleDelete(row)"
             >
-              删除
+              {{ t('common.action.delete') }}
             </el-button>
           </div>
         </template>

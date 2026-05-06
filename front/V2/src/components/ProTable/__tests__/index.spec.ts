@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils';
+import { i18n, setI18nLanguage } from '@/plugins/i18n';
 import ProTable from '@/components/ProTable/index.vue';
 
 const tableStub = {
@@ -13,6 +14,8 @@ const resultStub = {
 
 describe('ProTable', () => {
   it('renders table content and emits retry from error state', async () => {
+    setI18nLanguage('zh-CN');
+
     const wrapper = mount(ProTable, {
       props: {
         data: [{ id: '1', name: '系统管理员' }],
@@ -22,6 +25,7 @@ describe('ProTable', () => {
         default: '<div>名称列</div>',
       },
       global: {
+        plugins: [i18n],
         stubs: {
           ElButton: {
             template: '<button><slot /></button>',

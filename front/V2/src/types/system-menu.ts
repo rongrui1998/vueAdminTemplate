@@ -12,6 +12,7 @@ export interface SystemMenuPayload {
   parentId: string | null;
   type: SystemMenuType;
   name: string;
+  nameEn: string;
   path: string;
   component: string;
   permission: string;

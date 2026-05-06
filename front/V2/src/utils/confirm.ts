@@ -1,4 +1,5 @@
 import { ElMessageBox } from 'element-plus';
+import { i18n } from '@/plugins/i18n';
 
 interface ConfirmActionOptions {
   message: string;
@@ -9,15 +10,19 @@ interface ConfirmActionOptions {
 
 export async function confirmAction({
   message,
-  title = '操作确认',
-  confirmButtonText = '确定',
-  cancelButtonText = '取消',
+  title,
+  confirmButtonText,
+  cancelButtonText,
 }: ConfirmActionOptions) {
+  const resolvedTitle = title || i18n.global.t('shared.confirm.actionTitle');
+  const resolvedConfirmText = confirmButtonText || i18n.global.t('common.action.confirm');
+  const resolvedCancelText = cancelButtonText || i18n.global.t('common.action.cancel');
+
   try {
-    await ElMessageBox.confirm(message, title, {
+    await ElMessageBox.confirm(message, resolvedTitle, {
       type: 'warning',
-      confirmButtonText,
-      cancelButtonText,
+      confirmButtonText: resolvedConfirmText,
+      cancelButtonText: resolvedCancelText,
       distinguishCancelAndClose: true,
       closeOnClickModal: false,
       customClass: 'app-confirm-message-box',
@@ -32,7 +37,7 @@ export async function confirmAction({
 export function confirmDelete(message: string): Promise<boolean> {
   return confirmAction({
     message,
-    title: '删除确认',
-    confirmButtonText: '确认删除',
+    title: i18n.global.t('shared.confirm.deleteTitle'),
+    confirmButtonText: i18n.global.t('shared.confirm.deleteConfirm'),
   });
 }

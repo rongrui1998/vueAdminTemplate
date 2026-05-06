@@ -1,5 +1,8 @@
 <script setup lang="ts">
-withDefaults(
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const props = withDefaults(
   defineProps<{
     data: unknown[];
     loading?: boolean;
@@ -14,14 +17,16 @@ withDefaults(
     rowKey: 'id',
     tableClass: '',
     error: false,
-    errorTitle: '数据加载失败',
-    errorText: '请稍后重试',
   },
 );
 
 const emit = defineEmits<{
   (event: 'retry'): void;
 }>();
+
+const { t } = useI18n();
+const resolvedErrorTitle = computed(() => props.errorTitle || t('shared.proTable.errorTitle'));
+const resolvedErrorText = computed(() => props.errorText || t('shared.proTable.errorText'));
 </script>
 
 <template>
@@ -39,9 +44,11 @@ const emit = defineEmits<{
 
     <template v-if="error">
       <div class="pro-table__state">
-        <el-result icon="error" :title="errorTitle" :sub-title="errorText">
+        <el-result icon="error" :title="resolvedErrorTitle" :sub-title="resolvedErrorText">
           <template #extra>
-            <el-button type="primary" @click="emit('retry')">重新加载</el-button>
+            <el-button type="primary" @click="emit('retry')">{{
+              t('shared.proTable.retry')
+            }}</el-button>
           </template>
         </el-result>
       </div>

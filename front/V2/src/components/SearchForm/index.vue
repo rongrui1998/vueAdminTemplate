@@ -1,22 +1,29 @@
 <script setup lang="ts">
 import { reactive, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 export interface SearchFormOption {
   label: string;
   value: string | number | boolean;
 }
 
+type SearchFormFieldType = 'input' | 'select' | 'date' | 'datetime' | 'daterange' | 'datetimerange';
+
 export interface SearchFormField {
   label: string;
   prop: string;
-  type?: 'input' | 'select';
+  type?: SearchFormFieldType;
   placeholder?: string;
   options?: SearchFormOption[];
   clearable?: boolean;
 }
 
-type SearchFormValue = string | number | boolean | undefined;
+type SearchFormValue = string | number | boolean | string[] | undefined;
 type SearchFormModel = Record<string, SearchFormValue>;
+
+function isDateField(type?: SearchFormFieldType) {
+  return type === 'date' || type === 'datetime' || type === 'daterange' || type === 'datetimerange';
+}
 
 const props = withDefaults(
   defineProps<{
@@ -34,6 +41,7 @@ const emit = defineEmits<{
   (event: 'reset', value: SearchFormModel): void;
 }>();
 
+const { t } = useI18n();
 const formModel = reactive<SearchFormModel>({});
 
 watch(
@@ -62,7 +70,7 @@ function handleSearch() {
 
 function handleReset() {
   const nextModel = props.fields.reduce<SearchFormModel>((result, field) => {
-    result[field.prop] = '';
+    result[field.prop] = isDateField(field.type) ? [] : '';
     return result;
   }, {});
 
@@ -82,7 +90,9 @@ function handleReset() {
         <el-select
           v-if="field.type === 'select'"
           :model-value="formModel[field.prop]"
-          :placeholder="field.placeholder || `请选择${field.label}`"
+          :placeholder="
+            field.placeholder || t('shared.searchForm.selectPlaceholder', { label: field.label })
+          "
           :clearable="field.clearable ?? true"
           class="search-form__control"
           @update:model-value="(value: SearchFormValue) => updateField(field.prop, value)"
@@ -96,19 +106,35 @@ function handleReset() {
         </el-select>
 
         <el-input
-          v-else
+          v-else-if="!field.type || field.type === 'input'"
           :model-value="String(formModel[field.prop] ?? '')"
-          :placeholder="field.placeholder || `请输入${field.label}`"
+          :placeholder="
+            field.placeholder || t('shared.searchForm.inputPlaceholder', { label: field.label })
+          "
           :clearable="field.clearable ?? true"
           class="search-form__control"
           @update:model-value="(value: string) => updateField(field.prop, value)"
           @keyup.enter="handleSearch"
         />
+
+        <el-date-picker
+          v-else
+          :model-value="(formModel[field.prop] as string[] | undefined) || []"
+          :type="field.type"
+          value-format="YYYY-MM-DD HH:mm:ss"
+          :clearable="field.clearable ?? true"
+          start-placeholder="开始时间"
+          end-placeholder="结束时间"
+          class="search-form__control search-form__control--wide"
+          @update:model-value="
+            (value: string[] | undefined) => updateField(field.prop, value || [])
+          "
+        />
       </el-form-item>
 
       <el-form-item>
-        <el-button type="primary" @click="handleSearch">查询</el-button>
-        <el-button @click="handleReset">重置</el-button>
+        <el-button type="primary" @click="handleSearch">{{ t('common.action.search') }}</el-button>
+        <el-button @click="handleReset">{{ t('common.action.reset') }}</el-button>
       </el-form-item>
     </el-form>
   </el-card>
@@ -128,5 +154,9 @@ function handleReset() {
 
 .search-form__control {
   width: 220px;
+}
+
+.search-form__control--wide {
+  width: 320px;
 }
 </style>

@@ -26,6 +26,7 @@ function normalizeMenuPayload(data = {}) {
     parentId: data.parentId ?? null,
     type,
     name: String(data.name || '').trim() || '未命名菜单',
+    nameEn: String(data.nameEn || '').trim(),
     path: type === 'button' ? '' : String(data.path || '').trim(),
     component:
       type === 'directory'

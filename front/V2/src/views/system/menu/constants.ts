@@ -1,16 +1,17 @@
 import type { TagProps } from 'element-plus';
 import type { SystemMenuPayload, SystemMenuType } from '@/types/system-menu';
+import { i18n } from '@/plugins/i18n';
 
 export const menuTypeOptions: Array<{ label: string; value: SystemMenuType }> = [
-  { label: '目录', value: 'directory' },
-  { label: '菜单', value: 'menu' },
-  { label: '按钮', value: 'button' },
+  { label: i18n.global.t('systemMenu.type.directory'), value: 'directory' },
+  { label: i18n.global.t('systemMenu.type.menu'), value: 'menu' },
+  { label: i18n.global.t('systemMenu.type.button'), value: 'button' },
 ];
 
 export const menuTypeLabelMap: Record<SystemMenuType, string> = {
-  directory: '目录',
-  menu: '菜单',
-  button: '按钮',
+  directory: i18n.global.t('systemMenu.type.directory'),
+  menu: i18n.global.t('systemMenu.type.menu'),
+  button: i18n.global.t('systemMenu.type.button'),
 };
 
 export const menuTypeTagTypeMap: Record<SystemMenuType, TagProps['type']> = {
@@ -23,6 +24,7 @@ export const defaultMenuPayload: SystemMenuPayload = {
   parentId: null,
   type: 'menu',
   name: '',
+  nameEn: '',
   path: '',
   component: '',
   permission: '',

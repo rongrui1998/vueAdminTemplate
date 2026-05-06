@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Plus, RefreshRight } from '@element-plus/icons-vue';
+import { useI18n } from 'vue-i18n';
 import { getSystemMenusApi } from '@/api/system-menu';
 import {
   createSystemRoleApi,
@@ -22,7 +23,10 @@ import RoleFormDialog from './components/RoleFormDialog.vue';
 import RolePermissionDialog from './components/RolePermissionDialog.vue';
 
 const dataSourceLabel = computed(() => getStandardDataSourceLabel());
-const sourceStatus = computed(() => (isStandardApiMode() ? '接口联调中' : 'Mock 先行中'));
+const { t } = useI18n();
+const sourceStatus = computed(() =>
+  isStandardApiMode() ? t('shared.standard.apiStatus') : t('shared.standard.mockStatus'),
+);
 const { hasPermission } = usePermission();
 const pageStatus = ref<'loading' | 'error' | 'success'>('loading');
 const errorText = ref('');
@@ -38,9 +42,9 @@ const queryForm = reactive({
 });
 const searchFields: SearchFormField[] = [
   {
-    label: '关键词',
+    label: t('systemRole.fields.keyword'),
     prop: 'keyword',
-    placeholder: '角色名称 / 角色编码',
+    placeholder: t('systemRole.fields.keywordPlaceholder'),
   },
 ];
 
@@ -57,7 +61,7 @@ async function loadRoles() {
   } catch (error) {
     tableData.value = [];
     pageStatus.value = 'error';
-    errorText.value = error instanceof Error ? error.message : '加载角色数据失败';
+    errorText.value = error instanceof Error ? error.message : t('systemRole.messages.loadFailed');
   }
 }
 
@@ -101,10 +105,10 @@ async function handleSubmit(payload: SystemRolePayload) {
   try {
     if (currentRecord.value) {
       await updateSystemRoleApi(currentRecord.value.id, payload);
-      ElMessage.success('角色修改成功');
+      ElMessage.success(t('systemRole.messages.updateSuccess'));
     } else {
       await createSystemRoleApi(payload);
-      ElMessage.success('角色新增成功');
+      ElMessage.success(t('systemRole.messages.createSuccess'));
     }
 
     formVisible.value = false;
@@ -115,14 +119,14 @@ async function handleSubmit(payload: SystemRolePayload) {
 }
 
 async function handleDelete(row: SystemRoleRecord) {
-  const confirmed = await confirmDelete(`确认删除“${row.name}”吗？`);
+  const confirmed = await confirmDelete(t('systemRole.messages.deleteConfirm', { name: row.name }));
 
   if (!confirmed) {
     return;
   }
 
   await deleteSystemRoleApi(row.id);
-  ElMessage.success('角色删除成功');
+  ElMessage.success(t('systemRole.messages.deleteSuccess'));
   await loadRoles();
 }
 
@@ -135,22 +139,26 @@ async function handleStatusChange(row: SystemRoleRecord, value: number | string 
     remark: row.remark || '',
   });
 
-  ElMessage.success(`已${Number(value) === 1 ? '启用' : '停用'}角色`);
+  ElMessage.success(
+    t('systemRole.messages.statusChanged', {
+      status: Number(value) === 1 ? t('common.status.active') : t('common.status.inactive'),
+    }),
+  );
   await loadRoles();
 }
 
-async function handlePermissionSubmit(menuIds: string[]) {
-  if (!currentRecord.value) {
-    return;
-  }
-
+async function handlePermissionSubmit(payload: { roleId: string; menuIds: string[] }) {
   permissionLoading.value = true;
 
   try {
-    await updateSystemRoleMenusApi(currentRecord.value.id, { menuIds });
-    ElMessage.success('角色权限保存成功');
+    await updateSystemRoleMenusApi(payload.roleId, { menuIds: payload.menuIds });
+    ElMessage.success(t('systemRole.messages.permissionSaveSuccess'));
     permissionVisible.value = false;
     await loadRoles();
+  } catch (error) {
+    ElMessage.error(
+      error instanceof Error ? error.message : t('systemRole.messages.permissionSaveFailed'),
+    );
   } finally {
     permissionLoading.value = false;
   }
@@ -162,7 +170,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <PageContainer title="角色管理">
+  <PageContainer :title="t('systemRole.title')">
     <template #extra>
       <div class="role-page__toolbar">
         <el-button
@@ -171,7 +179,7 @@ onMounted(() => {
           :disabled="!hasPermission('system:role:create')"
           @click="openCreateDialog"
         >
-          新增角色
+          {{ t('systemRole.create') }}
         </el-button>
         <el-button circle :icon="RefreshRight" @click="loadRoles" />
       </div>
@@ -179,8 +187,9 @@ onMounted(() => {
 
     <el-alert type="info" :closable="false" class="role-page__alert">
       <template #title>
-        当前数据源：{{ dataSourceLabel }}，{{ sourceStatus }}。角色管理已支持 mock / api
-        双模式列表、维护与菜单权限分配。
+        {{
+          t('systemRole.sourceDescription', { dataSource: dataSourceLabel, status: sourceStatus })
+        }}
       </template>
     </el-alert>
 
@@ -196,25 +205,27 @@ onMounted(() => {
       :data="tableData"
       :loading="pageStatus === 'loading'"
       :error="pageStatus === 'error'"
-      :error-text="errorText || '请稍后重试'"
-      error-title="角色加载失败"
+      :error-text="errorText || t('shared.proTable.errorText')"
+      :error-title="t('systemRole.messages.loadFailed')"
       row-key="id"
       @retry="loadRoles"
     >
-      <el-table-column label="角色名称" min-width="160">
+      <el-table-column :label="t('systemRole.table.name')" min-width="160">
         <template #default="{ row }">
           <div class="role-page__name">
             <span>{{ row.name }}</span>
-            <el-tag v-if="row.id === 'admin'" size="small" effect="plain">内置</el-tag>
+            <el-tag v-if="row.id === 'admin'" size="small" effect="plain">{{
+              t('systemRole.table.builtIn')
+            }}</el-tag>
           </div>
         </template>
       </el-table-column>
 
-      <el-table-column label="角色编码" prop="code" min-width="140" />
+      <el-table-column :label="t('systemRole.table.code')" prop="code" min-width="140" />
 
-      <el-table-column label="排序" prop="sort" width="90" align="center" />
+      <el-table-column :label="t('systemRole.table.sort')" prop="sort" width="90" align="center" />
 
-      <el-table-column label="状态" width="120" align="center">
+      <el-table-column :label="t('systemRole.table.status')" width="120" align="center">
         <template #default="{ row }">
           <el-switch
             :model-value="row.status"
@@ -226,21 +237,21 @@ onMounted(() => {
         </template>
       </el-table-column>
 
-      <el-table-column label="权限数量" width="110" align="center">
+      <el-table-column :label="t('systemRole.table.permissions')" width="110" align="center">
         <template #default="{ row }">
           <el-tag effect="light">{{ row.permissions.length }}</el-tag>
         </template>
       </el-table-column>
 
-      <el-table-column label="关联用户" width="110" align="center">
+      <el-table-column :label="t('systemRole.table.users')" width="110" align="center">
         <template #default="{ row }">
           <span>{{ row.userCount }}</span>
         </template>
       </el-table-column>
 
-      <el-table-column label="创建时间" prop="createdAt" min-width="180" />
+      <el-table-column :label="t('systemRole.table.createdAt')" prop="createdAt" min-width="180" />
 
-      <el-table-column label="操作" width="270" fixed="right">
+      <el-table-column :label="t('systemRole.table.actions')" width="270" fixed="right">
         <template #default="{ row }">
           <div class="role-page__actions">
             <el-button
@@ -249,7 +260,7 @@ onMounted(() => {
               :disabled="!hasPermission('system:role:auth')"
               @click="openPermissionDialog(row)"
             >
-              分配权限
+              {{ t('systemRole.actions.assignPermissions') }}
             </el-button>
             <el-button
               text
@@ -257,7 +268,7 @@ onMounted(() => {
               :disabled="!hasPermission('system:role:edit')"
               @click="openEditDialog(row)"
             >
-              修改
+              {{ t('common.action.edit') }}
             </el-button>
             <el-button
               text
@@ -265,7 +276,7 @@ onMounted(() => {
               :disabled="row.id === 'admin' || !hasPermission('system:role:delete')"
               @click="handleDelete(row)"
             >
-              删除
+              {{ t('common.action.delete') }}
             </el-button>
           </div>
         </template>

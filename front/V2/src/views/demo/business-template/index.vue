@@ -219,7 +219,14 @@ onMounted(() => {
         </template>
         <template #extra>
           <el-button :icon="RefreshRight" @click="resetDemoData">重置示例</el-button>
-          <el-button type="primary" :icon="Plus" @click="openCreateDialog">新增业务</el-button>
+          <el-button
+            v-permission="'demo:business-template:create'"
+            type="primary"
+            :icon="Plus"
+            @click="openCreateDialog"
+          >
+            新增业务
+          </el-button>
         </template>
 
         <el-table-column prop="name" label="业务名称" min-width="170" />
@@ -236,11 +243,24 @@ onMounted(() => {
         <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openDetail(row)">详情</el-button>
-            <el-button link type="primary" @click="toggleStatus(row)">
+            <el-button
+              v-permission="'demo:business-template:status'"
+              link
+              type="primary"
+              @click="toggleStatus(row)"
+            >
               {{ row.status === 1 ? '停用' : '启用' }}
             </el-button>
-            <el-button link type="primary" @click="openEditDialog(row)">编辑</el-button>
             <el-button
+              v-permission="'demo:business-template:edit'"
+              link
+              type="primary"
+              @click="openEditDialog(row)"
+            >
+              编辑
+            </el-button>
+            <el-button
+              v-permission="'demo:business-template:delete'"
               link
               type="danger"
               :loading="deletingRowId === row.id"

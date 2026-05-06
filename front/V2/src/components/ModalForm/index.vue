@@ -1,5 +1,8 @@
 <script setup lang="ts">
-withDefaults(
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const props = withDefaults(
   defineProps<{
     visible: boolean;
     title: string;
@@ -11,10 +14,12 @@ withDefaults(
   {
     width: '620px',
     submitting: false,
-    confirmText: '确定',
-    cancelText: '取消',
   },
 );
+
+const { t } = useI18n();
+const resolvedConfirmText = computed(() => props.confirmText || t('common.action.confirm'));
+const resolvedCancelText = computed(() => props.cancelText || t('common.action.cancel'));
 
 const emit = defineEmits<{
   (event: 'update:visible', value: boolean): void;
@@ -38,9 +43,9 @@ function closeDialog() {
 
     <template #footer>
       <slot name="footer">
-        <el-button @click="closeDialog">{{ cancelText }}</el-button>
+        <el-button @click="closeDialog">{{ resolvedCancelText }}</el-button>
         <el-button type="primary" :loading="submitting" @click="emit('confirm')">
-          {{ confirmText }}
+          {{ resolvedConfirmText }}
         </el-button>
       </slot>
     </template>

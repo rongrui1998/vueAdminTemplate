@@ -29,6 +29,7 @@ export const useTabsStore = defineStore('tabs', {
       const currentIndex = this.visitedViews.findIndex((item) => item.routeName === routeName);
       const nextTab: TabViewItem = {
         title: String(route.meta.title || '未命名页面'),
+        titleEn: String(route.meta.titleEn || route.meta.title || 'Untitled'),
         path: route.path,
         fullPath: route.fullPath,
         routeName,
@@ -93,6 +94,24 @@ export const useTabsStore = defineStore('tabs', {
     },
     removeCache(routeName: string) {
       this.cachedViews = this.cachedViews.filter((item) => item !== routeName);
+      persist(this.$state);
+    },
+    reorderTabs(sourceFullPath: string, targetFullPath: string) {
+      if (sourceFullPath === targetFullPath) {
+        return;
+      }
+
+      const sourceIndex = this.visitedViews.findIndex((item) => item.fullPath === sourceFullPath);
+      const targetIndex = this.visitedViews.findIndex((item) => item.fullPath === targetFullPath);
+
+      if (sourceIndex === -1 || targetIndex === -1) {
+        return;
+      }
+
+      const nextViews = [...this.visitedViews];
+      const [source] = nextViews.splice(sourceIndex, 1);
+      nextViews.splice(targetIndex, 0, source);
+      this.visitedViews = nextViews;
       persist(this.$state);
     },
     resetTabs() {

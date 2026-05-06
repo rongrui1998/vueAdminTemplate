@@ -81,6 +81,20 @@ async function readBody(request) {
   return raw ? JSON.parse(raw) : {};
 }
 
+async function userHasPermission(user, permission) {
+  const access = await buildUserAccessPayload(user);
+  return access.roles.includes('admin') || access.permissions.includes(permission);
+}
+
+async function requirePermission(request, response, user, permission) {
+  if (await userHasPermission(user, permission)) {
+    return true;
+  }
+
+  sendJson(response, 403, fail(403, '无权限访问', '当前账号缺少操作权限'));
+  return false;
+}
+
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
@@ -207,6 +221,10 @@ async function handleRequest(request, response) {
   }
 
   if (request.method === 'GET' && url.pathname === '/api/demo/business-templates') {
+    if (!(await requirePermission(request, response, authUser, 'demo:business-template:view'))) {
+      return;
+    }
+
     const list = await getBusinessTemplates({
       keyword: url.searchParams.get('keyword') || '',
       status: url.searchParams.get('status') || '',
@@ -216,23 +234,45 @@ async function handleRequest(request, response) {
   }
 
   if (request.method === 'POST' && url.pathname === '/api/demo/business-templates') {
+    if (!(await requirePermission(request, response, authUser, 'demo:business-template:create'))) {
+      return;
+    }
+
     sendJson(response, 200, success(await createBusinessTemplate(await readBody(request))));
     return;
   }
 
   if (request.method === 'GET' && url.pathname.startsWith('/api/demo/business-templates/')) {
+    if (!(await requirePermission(request, response, authUser, 'demo:business-template:view'))) {
+      return;
+    }
+
     const id = url.pathname.split('/').pop();
     sendJson(response, 200, success(await getBusinessTemplateDetail(id)));
     return;
   }
 
   if (request.method === 'PUT' && url.pathname.startsWith('/api/demo/business-templates/')) {
+    if (
+      !(
+        (await userHasPermission(authUser, 'demo:business-template:edit')) ||
+        (await userHasPermission(authUser, 'demo:business-template:status'))
+      )
+    ) {
+      sendJson(response, 403, fail(403, '无权限访问', '当前账号缺少操作权限'));
+      return;
+    }
+
     const id = url.pathname.split('/').pop();
     sendJson(response, 200, success(await updateBusinessTemplate(id, await readBody(request))));
     return;
   }
 
   if (request.method === 'DELETE' && url.pathname.startsWith('/api/demo/business-templates/')) {
+    if (!(await requirePermission(request, response, authUser, 'demo:business-template:delete'))) {
+      return;
+    }
+
     const id = url.pathname.split('/').pop();
     sendJson(response, 200, success(await deleteBusinessTemplate(id)));
     return;

@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils';
 import ElementPlus from 'element-plus';
 import { createPinia, setActivePinia } from 'pinia';
+import { i18n, setI18nLanguage } from '@/plugins/i18n';
 import { useAuthStore } from '@/store/modules/auth';
 import UserManagementPage from '@/views/system/user/index.vue';
 
@@ -116,7 +117,7 @@ function mountPage() {
   return mount(UserManagementPage, {
     attachTo: document.body,
     global: {
-      plugins: [ElementPlus, pinia],
+      plugins: [ElementPlus, pinia, i18n],
       stubs: {
         ElDialog: dialogStub,
         teleport: true,
@@ -126,6 +127,10 @@ function mountPage() {
 }
 
 describe('system user page', () => {
+  beforeEach(() => {
+    setI18nLanguage('zh-CN');
+  });
+
   it('renders user table and management actions', async () => {
     const wrapper = mountPage();
 
@@ -140,7 +145,7 @@ describe('system user page', () => {
     expect(wrapper.text()).toContain('系统管理员');
     expect(wrapper.text()).toContain('运营编辑');
     expect(wrapper.text()).toContain('重置密码');
-    expect(wrapper.text()).toContain('修改');
+    expect(wrapper.text()).toContain('编辑');
     expect(wrapper.text()).toContain('删除');
   });
 
@@ -159,5 +164,58 @@ describe('system user page', () => {
     expect(wrapper.text()).toContain('新增用户');
     expect(wrapper.text()).toContain('登录账号');
     expect(wrapper.text()).toContain('绑定角色');
+  });
+
+  it('renders English copy for the user page and form dialog', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    setI18nLanguage('en-US');
+
+    const authStore = useAuthStore();
+    authStore.userInfoLoaded = true;
+    authStore.userInfo = {
+      id: 'u-1',
+      username: 'admin',
+      nickname: 'System Admin',
+      avatar: '',
+      roles: ['admin'],
+      permissions: [
+        'system:user:view',
+        'system:user:create',
+        'system:user:edit',
+        'system:user:delete',
+        'system:user:reset',
+      ],
+    };
+
+    const wrapper = mount(UserManagementPage, {
+      attachTo: document.body,
+      global: {
+        plugins: [ElementPlus, pinia, i18n],
+        stubs: {
+          ElDialog: dialogStub,
+          teleport: true,
+        },
+      },
+    });
+
+    await waitForPage(wrapper);
+
+    expect(wrapper.text()).toContain('User Management');
+    expect(wrapper.text()).toContain('Create User');
+    expect(wrapper.text()).toContain('Username');
+    expect(wrapper.text()).toContain('Nickname');
+    expect(wrapper.text()).toContain('Reset Password');
+
+    const createButton = wrapper
+      .findAll('button')
+      .find((item) => item.text().includes('Create User'));
+    expect(createButton).toBeTruthy();
+    await createButton!.trigger('click');
+    await waitForPage(wrapper);
+
+    expect(wrapper.text()).toContain('Create User');
+    expect(wrapper.text()).toContain('Assigned Roles');
+    expect(wrapper.text()).toContain('Initial Password');
   });
 });
