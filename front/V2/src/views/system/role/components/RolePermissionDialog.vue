@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
-import type { ElTree } from 'element-plus';
+import type { ElTree, CheckedInfo } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import type { BackendMenuItem } from '@/types/menu';
 import type { SystemRoleRecord } from '@/types/system-role';
@@ -65,19 +65,14 @@ function submitPermission() {
   });
 }
 
-function handleTreeCheck(
-  _: BackendMenuItem,
-  payload: {
-    checkedKeys: Array<string | number>;
-    node: BackendMenuItem;
-    checked: boolean;
-  },
-) {
+function handleTreeCheck(nodeData: BackendMenuItem, payload: CheckedInfo) {
+  const nextCheckedKeys = payload.checkedKeys.map(String);
+
   checkedKeys.value = syncPermissionTreeCheckedIds(
     props.menuTree,
-    payload.checkedKeys.map(String),
-    payload.node.id,
-    payload.checked,
+    nextCheckedKeys,
+    String(nodeData.id),
+    nextCheckedKeys.includes(String(nodeData.id)),
   );
   treeRef.value?.setCheckedKeys([]);
   treeRef.value?.setCheckedKeys(checkedKeys.value);

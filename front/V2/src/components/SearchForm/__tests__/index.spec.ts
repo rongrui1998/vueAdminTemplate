@@ -67,4 +67,31 @@ describe('SearchForm', () => {
     expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([{ timeRange: [] }]);
     expect(wrapper.emitted('reset')?.[0]).toEqual([{ timeRange: [] }]);
   });
+
+  it('renders date range placeholders from the active locale', () => {
+    setI18nLanguage('en-US');
+
+    const wrapper = mount(SearchForm, {
+      props: {
+        modelValue: {
+          timeRange: [],
+        },
+        fields: [
+          {
+            label: 'Created At',
+            prop: 'timeRange',
+            type: 'datetimerange',
+          },
+        ],
+      },
+      global: {
+        plugins: [ElementPlus, i18n],
+      },
+    });
+
+    const inputs = wrapper.findAll('input');
+
+    expect(inputs.some((input) => input.attributes('placeholder') === 'Start Time')).toBe(true);
+    expect(inputs.some((input) => input.attributes('placeholder') === 'End Time')).toBe(true);
+  });
 });

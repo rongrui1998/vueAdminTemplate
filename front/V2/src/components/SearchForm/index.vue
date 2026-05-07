@@ -123,8 +123,8 @@ function handleReset() {
           :type="field.type"
           value-format="YYYY-MM-DD HH:mm:ss"
           :clearable="field.clearable ?? true"
-          start-placeholder="开始时间"
-          end-placeholder="结束时间"
+          :start-placeholder="t('common.datePicker.start')"
+          :end-placeholder="t('common.datePicker.end')"
           class="search-form__control search-form__control--wide"
           @update:model-value="
             (value: string[] | undefined) => updateField(field.prop, value || [])
